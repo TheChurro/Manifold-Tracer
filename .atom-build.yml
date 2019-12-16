@@ -1,0 +1,8 @@
+name: Build
+cmd: cargo build
+sh: true
+targets:
+  format:
+    sh:  true
+    cmd: cargo fmt
+    keymap: alt-cmd-f
