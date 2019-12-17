@@ -1,3 +1,4 @@
+use std::f32;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Clone, Copy, Debug)]
@@ -17,15 +18,19 @@ op_scalar_impl!(Vec3, f32, Div, div, x, y, z);
 op_scalar_assign_impl!(Vec3, f32, DivAssign, div_assign, x, y, z);
 
 impl Vec3 {
+    pub fn new(x: f32, y: f32, z: f32) -> Vec3 {
+        Vec3 { x: x, y: y, z: z }
+    }
+
     pub fn dot(self, other: Vec3) -> f32 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
-    pub fn cross(self, other : Vec3) -> Vec3 {
+    pub fn cross(self, other: Vec3) -> Vec3 {
         Vec3 {
-            x : self.y * other.z - self.z * other.y,
-            y : self.z * other.x - self.x * other.z,
-            z : self.x * other.y - other.x * self.y
+            x: self.y * other.z - self.z * other.y,
+            y: self.z * other.x - self.x * other.z,
+            z: self.x * other.y - other.x * self.y,
         }
     }
 
@@ -35,5 +40,22 @@ impl Vec3 {
 
     pub fn length_sq(self) -> f32 {
         self.dot(self)
+    }
+
+    pub fn zero() -> Vec3 {
+        Vec3 {
+            x: 0f32,
+            y: 0f32,
+            z: 0f32,
+        }
+    }
+
+    pub fn normalized(self) -> Vec3 {
+        let norm = self.length();
+        if norm < f32::EPSILON * 100f32 {
+            Self::zero()
+        } else {
+            self / norm
+        }
     }
 }

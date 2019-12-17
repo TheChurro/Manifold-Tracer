@@ -40,6 +40,17 @@ macro_rules! op_scalar_impl {
                 }
             }
         }
+
+        impl $op<$name> for $scalar {
+            type Output = $name;
+            fn $op_name(self, rhs: $name) -> Self::Output {
+                $name {
+                    $axis_one: self.$op_name(rhs.$axis_one),
+                    $axis_two: self.$op_name(rhs.$axis_two),
+                    $axis_three: self.$op_name(rhs.$axis_three),
+                }
+            }
+        }
     };
 }
 

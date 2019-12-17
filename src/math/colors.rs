@@ -1,5 +1,5 @@
+use image::{Pixel, Rgb};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
-use image::{Rgb, Pixel};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Color {
@@ -26,26 +26,35 @@ op_scalar_assign_impl!(Color, f32, MulAssign, mul_assign, r, g, b);
 op_scalar_impl!(Color, f32, Div, div, r, g, b);
 op_scalar_assign_impl!(Color, f32, DivAssign, div_assign, r, g, b);
 
-impl From<Rgb<u8>> for Color
-{
-    fn from(val : Rgb<u8>) -> Color
-    {
+impl From<Rgb<u8>> for Color {
+    fn from(val: Rgb<u8>) -> Color {
         Color {
-            r : f32::from(val.channels()[0]) / 255f32,
-            g : f32::from(val.channels()[1]) / 255f32,
-            b : f32::from(val.channels()[2]) / 255f32
+            r: f32::from(val.channels()[0]) / 255f32,
+            g: f32::from(val.channels()[1]) / 255f32,
+            b: f32::from(val.channels()[2]) / 255f32,
         }
     }
 }
 
-impl From<Color> for Rgb<u8>
-{
-    fn from(color : Color) -> Rgb<u8>
-    {
+impl From<Color> for Rgb<u8> {
+    fn from(color: Color) -> Rgb<u8> {
         Rgb([
             f32::floor(color.r * 255f32) as u8,
             f32::floor(color.g * 255f32) as u8,
             f32::floor(color.b * 255f32) as u8,
         ])
+    }
+}
+
+impl Color {
+    pub fn new(r: f32, g: f32, b: f32) -> Color {
+        Color {
+            r: r,
+            g: g,
+            b: b
+        }
+    }
+    pub fn lerp(left: Color, right: Color, time: f32) -> Color {
+        (1f32 - time) * left + time * right
     }
 }
