@@ -50,6 +50,13 @@ impl Color {
     pub fn new(r: f32, g: f32, b: f32) -> Color {
         Color { r: r, g: g, b: b }
     }
+    pub fn zero() -> Color {
+        Color {
+            r: 0f32,
+            g: 0f32,
+            b: 0f32,
+        }
+    }
     pub fn lerp(left: Color, right: Color, time: f32) -> Color {
         (1f32 - time) * left + time * right
     }
@@ -64,7 +71,7 @@ impl Color {
         Color {
             r: self.r.powf(1f32 / gamma),
             g: self.g.powf(1f32 / gamma),
-            b: self.b.powf(1f32 / gamma)
+            b: self.b.powf(1f32 / gamma),
         }
     }
 }

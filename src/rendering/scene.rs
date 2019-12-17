@@ -8,7 +8,7 @@ pub struct Scene {
 impl Scene {
     pub fn new() -> Self {
         Scene {
-            renderables: Vec::new()
+            renderables: Vec::new(),
         }
     }
 
@@ -16,20 +16,13 @@ impl Scene {
         self.renderables.push(collider);
     }
 
-    pub fn cast(&self, ray: &Ray) -> Option<RayHit> {
+    pub fn cast(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<RayHit> {
         let mut best_hit: Option<RayHit> = None;
+        let mut earliest_time = t_max;
         for collider in &self.renderables {
-            if let Some(hit) = collider.hit(&ray) {
-                best_hit = match best_hit {
-                    Some(old_hit) => {
-                        if old_hit.hit_fraction < hit.hit_fraction {
-                            Some(old_hit)
-                        } else {
-                            Some(hit)
-                        }
-                    }
-                    None => Some(hit),
-                };
+            if let Some(hit) = collider.hit(&ray, t_min, earliest_time) {
+                earliest_time = hit.hit_fraction;
+                best_hit = Some(hit);
             }
         }
         best_hit
