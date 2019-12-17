@@ -8,5 +8,5 @@ targets:
     keymap: alt-cmd-f
   run:
     sh:  true
-    cmd: cargo run
+    cmd: cargo run --release
     keymap: alt-cmd-r

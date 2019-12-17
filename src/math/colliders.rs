@@ -54,7 +54,7 @@ impl RayCollidable for SphereGeometry {
                 Some(RayHit {
                     hit_fraction: time,
                     location: location,
-                    normal: (location - self.center).normalized(),
+                    normal: (location - self.center) / self.radius,
                 })
             } else {
                 None

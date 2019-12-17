@@ -30,7 +30,7 @@ impl Vec3 {
         Vec3 {
             x: self.y * other.z - self.z * other.y,
             y: self.z * other.x - self.x * other.z,
-            z: self.x * other.y - other.x * self.y,
+            z: self.x * other.y - self.y * other.x,
         }
     }
 
@@ -50,9 +50,33 @@ impl Vec3 {
         }
     }
 
+    pub fn left() -> Vec3 {
+        Vec3 {
+            x: 1f32,
+            y: 0f32,
+            z: 0f32,
+        }
+    }
+
+    pub fn up() -> Vec3 {
+        Vec3 {
+            x: 0f32,
+            y: 1f32,
+            z: 0f32,
+        }
+    }
+
+    pub fn forward() -> Vec3 {
+        Vec3 {
+            x: 0f32,
+            y: 0f32,
+            z: 1f32,
+        }
+    }
+
     pub fn normalized(&self) -> Vec3 {
         let norm = self.length();
-        if norm < f32::EPSILON * 100f32 {
+        if norm < 0.00001 {
             Self::zero()
         } else {
             self / norm
