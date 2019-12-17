@@ -35,9 +35,10 @@ impl Camera {
     }
 
     /// Convert a point in camera space into world space.
-    pub fn world_point(&self, u: f32, v: f32) -> Vec3
-    {
+    pub fn world_point(&self, u: f32, v: f32) -> Vec3 {
         // We want to start at top left corner. So the vertical needs to flip how it computes
-        self.location - self.out() + (u - 0.5f32) * self.horizontal() + (0.5f32 - v) * self.vertical()
+        self.location - self.out()
+            + (u - 0.5f32) * self.horizontal()
+            + (0.5f32 - v) * self.vertical()
     }
 }

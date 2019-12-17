@@ -13,7 +13,17 @@ impl Ray {
         }
     }
 
-    pub fn point_at_parameter(self, time: f32) -> Vec3 {
+    pub fn point_at_parameter(&self, time: f32) -> Vec3 {
         self.origin + time * self.direction
     }
+}
+
+pub struct RayHit {
+    pub hit_fraction: f32,
+    pub location: Vec3,
+    pub normal: Vec3,
+}
+
+pub trait RayCollidable {
+    fn hit(&self, ray: &Ray) -> Option<RayHit>;
 }

@@ -6,3 +6,7 @@ targets:
     sh:  true
     cmd: cargo fmt
     keymap: alt-cmd-f
+  run:
+    sh:  true
+    cmd: cargo run
+    keymap: alt-cmd-r

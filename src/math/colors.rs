@@ -48,13 +48,23 @@ impl From<Color> for Rgb<u8> {
 
 impl Color {
     pub fn new(r: f32, g: f32, b: f32) -> Color {
-        Color {
-            r: r,
-            g: g,
-            b: b
-        }
+        Color { r: r, g: g, b: b }
     }
     pub fn lerp(left: Color, right: Color, time: f32) -> Color {
         (1f32 - time) * left + time * right
+    }
+    pub fn gamma2_correct(&mut self) -> Color {
+        Color {
+            r: f32::sqrt(self.r),
+            g: f32::sqrt(self.g),
+            b: f32::sqrt(self.b),
+        }
+    }
+    pub fn gamma_correct(&mut self, gamma: f32) -> Color {
+        Color {
+            r: self.r.powf(1f32 / gamma),
+            g: self.g.powf(1f32 / gamma),
+            b: self.b.powf(1f32 / gamma)
+        }
     }
 }
