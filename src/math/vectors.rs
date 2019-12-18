@@ -1,5 +1,6 @@
 use std::f32;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::ops::Index;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3 {
@@ -22,6 +23,10 @@ impl Vec3 {
         Vec3 { x: x, y: y, z: z }
     }
 
+    pub fn all(v: f32) -> Vec3 {
+        Vec3 { x: v, y: v, z: v }
+    }
+
     pub fn dot(&self, other: &Vec3) -> f32 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
@@ -40,6 +45,30 @@ impl Vec3 {
 
     pub fn length_sq(&self) -> f32 {
         self.dot(self)
+    }
+
+    pub fn abs(&self) -> Vec3 {
+        Vec3 {
+            x: self.x.abs(),
+            y: self.y.abs(),
+            z: self.z.abs(),
+        }
+    }
+
+    pub fn min(&self, rhs: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x.min(rhs.x),
+            y: self.y.min(rhs.y),
+            z: self.z.min(rhs.z),
+        }
+    }
+
+    pub fn max(&self, rhs: &Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x.max(rhs.x),
+            y: self.y.max(rhs.y),
+            z: self.z.max(rhs.z),
+        }
     }
 
     pub fn zero() -> Vec3 {
@@ -80,6 +109,18 @@ impl Vec3 {
             Self::zero()
         } else {
             self / norm
+        }
+    }
+}
+
+impl Index<usize> for Vec3 {
+    type Output = f32;
+    fn index(&self, index: usize) -> &f32 {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            _ => { panic!("Invalid index for vector!"); }
         }
     }
 }

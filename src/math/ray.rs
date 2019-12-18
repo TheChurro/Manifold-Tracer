@@ -1,3 +1,4 @@
+use crate::math::geometry::aabb::AABBGeometry;
 use crate::math::vectors::Vec3;
 
 pub struct Ray {
@@ -35,4 +36,5 @@ pub struct RayHit {
 
 pub trait RayCollidable {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<RayHit>;
+    fn bounding_box(&self, t_min: f32, t_max: f32) -> Option<AABBGeometry>;
 }

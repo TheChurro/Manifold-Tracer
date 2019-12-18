@@ -1,17 +1,19 @@
 extern crate image;
-extern crate rand;
 extern crate indicatif;
+extern crate rand;
 
 pub mod math;
 pub mod rendering;
 
 use image::{Rgb, RgbImage};
-use rand::distributions::{Distribution, Uniform};
-use rand::{thread_rng, Rng};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use rand::distributions::{Distribution, Uniform};
+use rand::{thread_rng, Rng, SeedableRng};
+use rand::rngs::SmallRng;
 
-use math::colliders::{Collider, SphereGeometry};
+use math::colliders::Collider;
 use math::colors::Color;
+use math::geometry::sphere::SphereGeometry;
 use math::ray::Ray;
 use math::vectors::Vec3;
 
@@ -142,10 +144,16 @@ fn sample_color<T: Rng>(rng: &mut T) -> Color {
     )
 }
 
+const SEED: [u8; 16] = [0x10u8, 0x72u8, 0x1Fu8, 0xEAu8,
+                        0x7Au8, 0x40u8, 0xF2u8, 0x7Eu8,
+                        0xB2u8, 0xF5u8, 0xCDu8, 0xC6u8,
+                        0x39u8, 0x66u8, 0xA3u8, 0x38u8];
+
 #[allow(dead_code)]
 fn random_scene() -> Scene {
     let mut scene = Scene::new();
-    let mut rng = thread_rng();
+
+    let mut rng = SmallRng::from_seed(SEED);
     let mat_range = Uniform::new(0.0, 1.0);
     let dielectric_range = Uniform::new(0.8, 2.0);
     let radius_range = Uniform::new(0.1, 0.3);
@@ -243,22 +251,26 @@ fn random_scene() -> Scene {
 }
 
 fn main() {
-    let width = 1200 / 4;
-    let height = 800  / 4;
+    let width = 1200 / 1;
+    let height = 800 / 1;
     let aspect = width as f32 / height as f32;
     let num_samples = 10;
+    let delta_time = 1.0 / 30.0;
+
     let mut tmp_image = RgbImage::new(width, height);
+
     let location = Vec3::new(13.0, 2.0, 3.0);
     let look_at = Vec3::new(0.0, 0.0, 0.0);
     let camera = Camera::new(location, look_at, Vec3::up(), 50.0, aspect, 0.1, 10.0);
-    let scene = random_scene();
+
+    let mut scene = random_scene();
+    scene.compute_hierarchy(0.0, delta_time);
+
     let mut rng = thread_rng();
     let between = Uniform::new(0.0, 1.0);
 
     let time = std::time::Instant::now();
-    let delta_time = 1.0 / 30.0;
 
-    println!("Rendering!");
     let progress_bars = MultiProgress::new();
     let sty = ProgressStyle::default_bar()
         .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
@@ -289,7 +301,9 @@ fn main() {
                 pixel_bar.set_message(&format!("ray #{}", ray_number));
                 let u = (x as f32 + between.sample(&mut rng)) / (width as f32);
                 let v = (y as f32 + between.sample(&mut rng)) / (height as f32);
-                let ray = camera.world_ray(u, v).cast_at(delta_time * rng.sample(between));
+                let ray = camera
+                    .world_ray(u, v)
+                    .cast_at(delta_time * rng.sample(between));
                 color_accumulator += color(ray, &scene, &mut rng, &between);
                 pixel_bar.inc(1);
             }
