@@ -3,6 +3,7 @@ use crate::math::vectors::Vec3;
 pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,
+    pub cast_time: f32,
 }
 
 impl Ray {
@@ -10,6 +11,14 @@ impl Ray {
         Ray {
             origin: origin,
             direction: (target - origin).normalized(),
+            cast_time: 0.0,
+        }
+    }
+
+    pub fn cast_at(self, time: f32) -> Ray {
+        Ray {
+            cast_time: time,
+            ..self
         }
     }
 

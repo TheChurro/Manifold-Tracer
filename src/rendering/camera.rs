@@ -1,9 +1,9 @@
 use crate::math::quaternion::Quaternion;
-use crate::math::vectors::Vec3;
 use crate::math::ray::Ray;
+use crate::math::vectors::Vec3;
 
 use rand::distributions::Uniform;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 pub struct Camera {
     pub location: Vec3,
@@ -27,7 +27,15 @@ fn random_point_on_disk() -> Vec3 {
 }
 
 impl Camera {
-    pub fn new(location: Vec3, target: Vec3, up: Vec3, vertical_fov: f32, aspect: f32, aperture: f32, focus_dist: f32) -> Camera {
+    pub fn new(
+        location: Vec3,
+        target: Vec3,
+        up: Vec3,
+        vertical_fov: f32,
+        aspect: f32,
+        aperture: f32,
+        focus_dist: f32,
+    ) -> Camera {
         let theta = vertical_fov * std::f32::consts::PI / 180.0;
         let half_height = (theta / 2.0).tan();
         let mut forward = target - location;
@@ -60,9 +68,11 @@ impl Camera {
         let start_offset = self.location + self.orientation * lens_point;
         Ray::look_at(
             self.location + start_offset,
-            self.location + self.forward + (u - 0.5f32) * self.horizontal + (0.5f32 - v) * self.vertical
+            self.location
+                + self.forward
+                + (u - 0.5f32) * self.horizontal
+                + (0.5f32 - v) * self.vertical,
         )
         // We want to start at top left corner. So the vertical needs to flip how it computes
-
     }
 }

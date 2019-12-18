@@ -1,5 +1,6 @@
 extern crate image;
 extern crate rand;
+extern crate indicatif;
 
 pub mod math;
 pub mod rendering;
@@ -7,6 +8,7 @@ pub mod rendering;
 use image::{Rgb, RgbImage};
 use rand::distributions::{Distribution, Uniform};
 use rand::{thread_rng, Rng};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use math::colliders::{Collider, SphereGeometry};
 use math::colors::Color;
@@ -28,7 +30,7 @@ fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32
             let mut attenuation = Color::zero();
             if let Some(new_ray) = material.scatter(&ray, hit, &mut attenuation, rng, between) {
                 color_absorbed *= attenuation;
-                ray = new_ray;
+                ray = new_ray.cast_at(ray.cast_time);
             } else {
                 return Color::zero();
             }
@@ -136,7 +138,7 @@ fn sample_color<T: Rng>(rng: &mut T) -> Color {
     Color::new(
         rng.sample(mat_range) * rng.sample(mat_range),
         rng.sample(mat_range) * rng.sample(mat_range),
-        rng.sample(mat_range) * rng.sample(mat_range)
+        rng.sample(mat_range) * rng.sample(mat_range),
     )
 }
 
@@ -148,6 +150,7 @@ fn random_scene() -> Scene {
     let dielectric_range = Uniform::new(0.8, 2.0);
     let radius_range = Uniform::new(0.1, 0.3);
     let pos_range = Uniform::new(-0.45, 0.45);
+    let speed_range = Uniform::new(-1.0, 1.0);
     // Put on a floor
     scene.put(
         Collider::new(SphereGeometry {
@@ -165,39 +168,41 @@ fn random_scene() -> Scene {
             let pos = Vec3::new(
                 x as f32 + rng.sample(pos_range),
                 radius,
-                z as f32 + rng.sample(pos_range)
+                z as f32 + rng.sample(pos_range),
             );
-            if (pos - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9
-            {
+            if (pos - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                let mut collider = Collider::new(SphereGeometry {
+                    center: pos,
+                    radius: radius,
+                });
+                let y_speed = rng.sample(speed_range);
+                if y_speed > 0.0 {
+                    collider = collider.with_velocity(Vec3::new(
+                        rng.sample(speed_range),
+                        y_speed,
+                        rng.sample(speed_range),
+                    ));
+                }
                 if choosen_material < 0.8 {
                     scene.put(
-                        Collider::new(SphereGeometry {
-                            center: pos,
-                            radius: radius,
-                        }),
+                        collider,
                         Material::Lambertian {
                             albedo: sample_color(&mut rng),
                         },
                     )
                 } else if choosen_material < 0.95 {
                     scene.put(
-                        Collider::new(SphereGeometry {
-                            center: pos,
-                            radius: radius,
-                        }),
+                        collider,
                         Material::Metal {
                             albedo: sample_color(&mut rng),
-                            fuzziness: rng.sample(mat_range) * rng.sample(mat_range)
+                            fuzziness: rng.sample(mat_range) * rng.sample(mat_range),
                         },
                     )
                 } else {
                     scene.put(
-                        Collider::new(SphereGeometry {
-                            center: pos,
-                            radius: radius,
-                        }),
+                        collider,
                         Material::Dielectric {
-                            index_of_refraction: rng.sample(dielectric_range)
+                            index_of_refraction: rng.sample(dielectric_range),
                         },
                     )
                 }
@@ -211,7 +216,7 @@ fn random_scene() -> Scene {
             radius: 1.0,
         }),
         Material::Dielectric {
-            index_of_refraction: 1.5
+            index_of_refraction: 1.5,
         },
     );
     scene.put(
@@ -221,7 +226,7 @@ fn random_scene() -> Scene {
         }),
         Material::Metal {
             albedo: Color::new(0.7, 0.6, 0.5),
-            fuzziness: 0.0
+            fuzziness: 0.0,
         },
     );
     scene.put(
@@ -238,42 +243,66 @@ fn random_scene() -> Scene {
 }
 
 fn main() {
-    let width = 1200;
-    let height = 800;
+    let width = 1200 / 4;
+    let height = 800  / 4;
     let aspect = width as f32 / height as f32;
-    let num_samples = 50;
+    let num_samples = 10;
     let mut tmp_image = RgbImage::new(width, height);
     let location = Vec3::new(13.0, 2.0, 3.0);
     let look_at = Vec3::new(0.0, 0.0, 0.0);
-    let camera = Camera::new(
-        location,
-        look_at,
-        Vec3::up(),
-        50.0,
-        aspect,
-        0.1,
-        10.0
-    );
+    let camera = Camera::new(location, look_at, Vec3::up(), 50.0, aspect, 0.1, 10.0);
     let scene = random_scene();
     let mut rng = thread_rng();
     let between = Uniform::new(0.0, 1.0);
 
     let time = std::time::Instant::now();
+    let delta_time = 1.0 / 30.0;
+
+    println!("Rendering!");
+    let progress_bars = MultiProgress::new();
+    let sty = ProgressStyle::default_bar()
+        .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+        .progress_chars("#>-");
+    let column_bar = progress_bars.add(ProgressBar::new(width as u64));
+    column_bar.set_style(sty.clone());
+    let row_bar = progress_bars.add(ProgressBar::new(height as u64));
+    row_bar.set_style(sty.clone());
+    let pixel_bar = progress_bars.add(ProgressBar::new(num_samples as u64));
+    pixel_bar.set_style(sty.clone());
+
+    std::thread::spawn(move || {
+        progress_bars.join().unwrap();
+    });
 
     for x in 0..width {
+        column_bar.set_message(&format!("column #{}", x));
         for y in 0..height {
+            if y == 0 {
+                row_bar.reset();
+            }
+            row_bar.set_message(&format!("row #{}", y));
             let mut color_accumulator = Color::new(0.0, 0.0, 0.0);
-            for _ in 0..num_samples {
+            for ray_number in 0..num_samples {
+                if ray_number == 0 {
+                    pixel_bar.reset();
+                }
+                pixel_bar.set_message(&format!("ray #{}", ray_number));
                 let u = (x as f32 + between.sample(&mut rng)) / (width as f32);
                 let v = (y as f32 + between.sample(&mut rng)) / (height as f32);
-                let ray = camera.world_ray(u, v);
+                let ray = camera.world_ray(u, v).cast_at(delta_time * rng.sample(between));
                 color_accumulator += color(ray, &scene, &mut rng, &between);
+                pixel_bar.inc(1);
             }
             color_accumulator /= num_samples as f32;
             let out_color = color_accumulator.gamma2_correct();
             tmp_image.put_pixel(x, y, Rgb::from(out_color));
+            row_bar.inc(1);
         }
+        column_bar.inc(1);
     }
+    pixel_bar.finish_with_message("done");
+    row_bar.finish_with_message("done");
+    column_bar.finish_with_message("done");
     println!("Time to render: {}", time.elapsed().as_millis());
 
     tmp_image
