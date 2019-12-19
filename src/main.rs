@@ -21,7 +21,7 @@ use rendering::bvh::BVHNode;
 use rendering::camera::Camera;
 use rendering::materials::Material;
 use rendering::scene::Scene;
-use rendering::textures::{Texture, TextureIndex};
+use rendering::textures::{SampleMode, Texture, TextureIndex};
 
 const MIN_TIME: f32 = 0.001;
 const MAX_TIME: f32 = 1000.0;
@@ -278,24 +278,46 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
 
     let green_tex = scene.add_texture(Texture::Constant(Color::new(0.2, 0.3, 0.1)));
     let white_tex = scene.add_texture(Texture::Constant(Color::new(0.9, 0.9, 0.9)));
-    let _checker_vol_tex = scene.add_texture(Texture::CheckerVolume(green_tex, white_tex, 0.5));
+    let checker_vol_tex = scene.add_texture(Texture::CheckerVolume(green_tex, white_tex, 0.5));
     let checker_surf_tex = scene.add_texture(Texture::CheckerSurface(green_tex, white_tex, 20));
-    let perlin_tex = scene.add_texture(Texture::Perlin(10.0));
-    let tex_sphere = SphereGeometry::new(Vec3::new(0.0, 1.0, 2.0), 1.0);
+    let marble_tex = scene.add_texture(Texture::Noise(
+        2.0,
+        7,
+        0.5,
+        Box::new(|x: Vec3, y: Vec3| {
+            (0.5 * (1.0 + (4.0 * x.z + 10.0 * y.length_sq()).sin())).into()
+        }),
+    ));
+    let earth_tex = scene.add_texture(Texture::Image(
+        image::open("resources/earthmap.jpg")
+            .expect("Failed to load earth image!")
+            .to_rgb(),
+        SampleMode::Wrap,
+    ));
+
+    let test_sphere = SphereGeometry::new(Vec3::new(0.0, 1.0, 2.0), 1.0);
     let ground_sphere = SphereGeometry::new(-100.0 * Vec3::up(), 100.0);
-    let ground_material = Material::Lambertian { albedo: perlin_tex };
-    let perlin_material = Material::Lambertian { albedo: perlin_tex };
+
+    let ground_material = Material::Lambertian {
+        albedo: checker_vol_tex,
+    };
+    let marble_material = Material::Lambertian { albedo: marble_tex };
     let checker_material = Material::Metal {
         albedo: checker_surf_tex,
         fuzziness: 0.2,
     };
+    let earth_material = Material::Lambertian { albedo: earth_tex };
 
     scene.put(
-        Collider::new(tex_sphere.offset(Vec3::right())),
-        perlin_material,
+        Collider::new(test_sphere.offset(2.0 * Vec3::right())),
+        marble_material,
     );
     scene.put(
-        Collider::new(tex_sphere.offset(-Vec3::right())),
+        Collider::new(test_sphere.offset(Vec3::up())),
+        earth_material,
+    );
+    scene.put(
+        Collider::new(test_sphere.offset(-2.0 * Vec3::right())),
         checker_material,
     );
     scene.put(Collider::new(ground_sphere), ground_material);
@@ -323,12 +345,17 @@ fn test_perlin_two_spheres(aspect: f32) -> (Scene, Camera) {
         2.0,
         7,
         0.5,
-        Box::new(|x: Vec3, y: Vec3| (0.5* (1.0 + (4.0 * x.z + 10.0 * y.length_sq()).sin())).into())
+        Box::new(|x: Vec3, y: Vec3| {
+            (0.5 * (1.0 + (4.0 * x.z + 10.0 * y.length_sq()).sin())).into()
+        }),
     ));
     let turb_tex = scene.add_texture(Texture::Turbulence(2.0, 7, 0.5));
     let tex_sphere = SphereGeometry::new(2.0 * Vec3::up(), 2.0);
     let ground_sphere = SphereGeometry::new(-1000.0 * Vec3::up(), 1000.0);
-    let perlin_material = Material::Metal { albedo: marble_tex, fuzziness: 0.75 };
+    let perlin_material = Material::Metal {
+        albedo: marble_tex,
+        fuzziness: 0.75,
+    };
     let ground_material = Material::Lambertian { albedo: turb_tex };
 
     scene.put(Collider::new(tex_sphere), perlin_material);
@@ -351,12 +378,12 @@ fn main() {
     let width = 1200 / 1;
     let height = 800 / 1;
     let aspect = width as f32 / height as f32;
-    let num_samples = 100;
+    let num_samples = 25;
     let delta_time = 1.0 / 30.0;
 
     let mut tmp_image = RgbImage::new(width, height);
 
-    let (mut scene, camera) = test_perlin_two_spheres(aspect);
+    let (mut scene, camera) = test_textures_scene(aspect);
     scene.compute_hierarchy(0.0, delta_time);
     if let &Some(ref hierarchy) = &scene.hierarchy {
         let mut total_volume = 0.0;
