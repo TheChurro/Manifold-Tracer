@@ -1,8 +1,8 @@
 use crate::math::geometry::aabb::AABBGeometry;
 use crate::math::ray::{Ray, RayCollidable, RayHit};
 
-use crate::rendering::scene::Renderable;
 use crate::rendering::materials::Material;
+use crate::rendering::scene::Renderable;
 
 pub struct BoundingVolumeHierarchy {
     pub hierarchy_heap: Vec<BVHNode>,
@@ -144,7 +144,7 @@ impl BoundingVolumeHierarchy {
             BVHNode::Empty => {
                 println!("HIT EMPTY!!");
                 None
-            },
+            }
             BVHNode::Leaf(index) => {
                 if let Some(hit) = ref_renderables[index].collider.hit(ray, t_min, t_max) {
                     Some((hit, ref_renderables[index].material))
@@ -157,7 +157,8 @@ impl BoundingVolumeHierarchy {
                     return None;
                 }
                 let left_hit = self.cast_ray_impl(ref_renderables, 2 * node + 1, ray, t_min, t_max);
-                let right_hit = self.cast_ray_impl(ref_renderables, 2 * node + 2, ray, t_min, t_max);
+                let right_hit =
+                    self.cast_ray_impl(ref_renderables, 2 * node + 2, ray, t_min, t_max);
                 match (left_hit, right_hit) {
                     (None, right) => right,
                     (left, None) => left,

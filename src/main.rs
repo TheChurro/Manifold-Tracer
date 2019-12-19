@@ -5,11 +5,11 @@ extern crate rand;
 pub mod math;
 pub mod rendering;
 
-use image::{Rgb, RgbImage};
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use image::RgbImage;
+use indicatif::{ProgressBar, ProgressStyle};
 use rand::distributions::{Distribution, Uniform};
-use rand::{thread_rng, Rng, SeedableRng};
 use rand::rngs::SmallRng;
+use rand::{thread_rng, Rng, SeedableRng};
 
 use math::colliders::Collider;
 use math::colors::Color;
@@ -17,9 +17,11 @@ use math::geometry::sphere::SphereGeometry;
 use math::ray::Ray;
 use math::vectors::Vec3;
 
+use rendering::bvh::BVHNode;
 use rendering::camera::Camera;
 use rendering::materials::Material;
 use rendering::scene::Scene;
+use rendering::textures::{Texture, TextureIndex};
 
 const MIN_TIME: f32 = 0.001;
 const MAX_TIME: f32 = 1000.0;
@@ -30,7 +32,14 @@ fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32
     for _ in 0..MAX_ITERATIONS {
         if let Some((hit, material)) = scene.cast(&ray, MIN_TIME, MAX_TIME) {
             let mut attenuation = Color::zero();
-            if let Some(new_ray) = material.scatter(&ray, hit, &mut attenuation, rng, between) {
+            if let Some(new_ray) = material.scatter(
+                &ray,
+                hit,
+                &mut attenuation,
+                rng,
+                between,
+                &scene.texture_atlas,
+            ) {
                 color_absorbed *= attenuation;
                 ray = new_ray.cast_at(ray.cast_time);
             } else {
@@ -51,13 +60,19 @@ fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32
 #[allow(dead_code)]
 fn create_scene() -> Scene {
     let mut scene = Scene::new();
+    let checker_texture = Texture::CheckerVolume(
+        TextureIndex::Constant(Color::new(0.2, 0.3, 0.1)),
+        TextureIndex::Constant(Color::new(0.9, 0.9, 0.9)),
+        0.5,
+    );
+    let checker_texture = scene.add_texture(checker_texture);
     scene.put(
         Collider::new(SphereGeometry {
             center: Vec3::new(0.0, 0.0, -1.0),
             radius: 0.5,
         }),
         Material::Lambertian {
-            albedo: Color::new(0.8, 0.3, 0.3),
+            albedo: TextureIndex::Constant(Color::new(0.8, 0.3, 0.3)),
         },
     );
     scene.put(
@@ -66,7 +81,7 @@ fn create_scene() -> Scene {
             radius: 100.0,
         }),
         Material::Lambertian {
-            albedo: Color::new(0.5, 1.0, 0.5),
+            albedo: checker_texture,
         },
     );
     scene.put(
@@ -75,7 +90,7 @@ fn create_scene() -> Scene {
             radius: 0.5,
         }),
         Material::Metal {
-            albedo: Color::new(0.8, 0.6, 0.2),
+            albedo: TextureIndex::Constant(Color::new(0.8, 0.6, 0.2)),
             fuzziness: 0.0,
         },
     );
@@ -103,7 +118,7 @@ fn create_scene() -> Scene {
             radius: 0.25,
         }),
         Material::Metal {
-            albedo: Color::new(0.5, 0.5, 1.0),
+            albedo: TextureIndex::Constant(Color::new(0.5, 0.5, 1.0)),
             fuzziness: 0.0,
         },
     );
@@ -120,7 +135,7 @@ fn test_scene_two() -> Scene {
             radius: r,
         }),
         Material::Lambertian {
-            albedo: Color::new(0.0, 0.0, 1.0),
+            albedo: TextureIndex::Constant(Color::new(0.0, 0.0, 1.0)),
         },
     );
     scene.put(
@@ -129,7 +144,7 @@ fn test_scene_two() -> Scene {
             radius: r,
         }),
         Material::Lambertian {
-            albedo: Color::new(1.0, 0.0, 0.0),
+            albedo: TextureIndex::Constant(Color::new(1.0, 0.0, 0.0)),
         },
     );
     scene
@@ -144,10 +159,10 @@ fn sample_color<T: Rng>(rng: &mut T) -> Color {
     )
 }
 
-const SEED: [u8; 16] = [0x10u8, 0x72u8, 0x1Fu8, 0xEAu8,
-                        0x7Au8, 0x40u8, 0xF2u8, 0x7Eu8,
-                        0xB2u8, 0xF5u8, 0xCDu8, 0xC6u8,
-                        0x39u8, 0x66u8, 0xA3u8, 0x38u8];
+const SEED: [u8; 16] = [
+    0x10u8, 0x72u8, 0x1Fu8, 0xEAu8, 0x7Au8, 0x40u8, 0xF2u8, 0x7Eu8, 0xB2u8, 0xF5u8, 0xCDu8, 0xC6u8,
+    0x39u8, 0x66u8, 0xA3u8, 0x38u8,
+];
 
 #[allow(dead_code)]
 fn random_scene() -> Scene {
@@ -159,14 +174,19 @@ fn random_scene() -> Scene {
     let radius_range = Uniform::new(0.1, 0.3);
     let pos_range = Uniform::new(-0.45, 0.45);
     let speed_range = Uniform::new(-1.0, 1.0);
-    // Put on a floor
+    let checker_texture = Texture::CheckerVolume(
+        TextureIndex::Constant(Color::new(0.2, 0.3, 0.1)),
+        TextureIndex::Constant(Color::new(0.9, 0.9, 0.9)),
+        1.0,
+    );
+    let checker_texture = scene.add_texture(checker_texture);
     scene.put(
         Collider::new(SphereGeometry {
             center: Vec3::new(0.0, -1000.0, -1.0),
             radius: 1000.0,
         }),
         Material::Lambertian {
-            albedo: Color::new(0.5, 0.5, 0.5),
+            albedo: checker_texture,
         },
     );
     for x in -11..12 {
@@ -195,14 +215,14 @@ fn random_scene() -> Scene {
                     scene.put(
                         collider,
                         Material::Lambertian {
-                            albedo: sample_color(&mut rng),
+                            albedo: TextureIndex::Constant(sample_color(&mut rng)),
                         },
                     )
                 } else if choosen_material < 0.95 {
                     scene.put(
                         collider,
                         Material::Metal {
-                            albedo: sample_color(&mut rng),
+                            albedo: TextureIndex::Constant(sample_color(&mut rng)),
                             fuzziness: rng.sample(mat_range) * rng.sample(mat_range),
                         },
                     )
@@ -233,7 +253,7 @@ fn random_scene() -> Scene {
             radius: 1.0,
         }),
         Material::Metal {
-            albedo: Color::new(0.7, 0.6, 0.5),
+            albedo: TextureIndex::Constant(Color::new(0.7, 0.6, 0.5)),
             fuzziness: 0.0,
         },
     );
@@ -243,80 +263,143 @@ fn random_scene() -> Scene {
             radius: 1.0,
         }),
         Material::Lambertian {
-            albedo: Color::new(0.4, 0.2, 0.1),
+            albedo: TextureIndex::Constant(Color::new(0.4, 0.2, 0.1)),
         },
     );
 
     scene
 }
 
+#[allow(dead_code)]
+fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
+    let mut scene = Scene::new();
+    let camera_pos = Vec3::new(0.0, 1.0, -2.0);
+    let scene_center = Vec3::new(0.0, 1.0, 2.0);
+
+    let green_tex = scene.add_texture(Texture::Constant(Color::new(0.2, 0.3, 0.1)));
+    let white_tex = scene.add_texture(Texture::Constant(Color::new(0.9, 0.9, 0.9)));
+    let _checker_vol_tex = scene.add_texture(Texture::CheckerVolume(green_tex, white_tex, 0.5));
+    let checker_surf_tex = scene.add_texture(Texture::CheckerSurface(green_tex, white_tex, 20));
+    let perlin_tex = scene.add_texture(Texture::Perlin(10.0));
+    let tex_sphere = SphereGeometry::new(Vec3::new(0.0, 1.0, 2.0), 1.0);
+    let ground_sphere = SphereGeometry::new(-100.0 * Vec3::up(), 100.0);
+    let ground_material = Material::Lambertian { albedo: perlin_tex };
+    let perlin_material = Material::Lambertian { albedo: perlin_tex };
+    let checker_material = Material::Metal {
+        albedo: checker_surf_tex,
+        fuzziness: 0.2,
+    };
+
+    scene.put(
+        Collider::new(tex_sphere.offset(Vec3::right())),
+        perlin_material,
+    );
+    scene.put(
+        Collider::new(tex_sphere.offset(-Vec3::right())),
+        checker_material,
+    );
+    scene.put(Collider::new(ground_sphere), ground_material);
+    (
+        scene,
+        Camera::new(
+            camera_pos,
+            scene_center,
+            Vec3::up(),
+            80.0,
+            aspect,
+            0.1,
+            (camera_pos - scene_center).length(),
+        ),
+    )
+}
+
+#[allow(dead_code)]
+fn test_perlin_two_spheres(aspect: f32) -> (Scene, Camera) {
+    let mut scene = Scene::new();
+    let camera_pos = Vec3::new(13.0, 2.0, 3.0);
+    let scene_center = Vec3::new(0.0, 0.0, 0.0);
+
+    let marble_tex = scene.add_texture(Texture::Noise(
+        2.0,
+        7,
+        0.5,
+        Box::new(|x: Vec3, y: Vec3| (0.5* (1.0 + (4.0 * x.z + 10.0 * y.length_sq()).sin())).into())
+    ));
+    let turb_tex = scene.add_texture(Texture::Turbulence(2.0, 7, 0.5));
+    let tex_sphere = SphereGeometry::new(2.0 * Vec3::up(), 2.0);
+    let ground_sphere = SphereGeometry::new(-1000.0 * Vec3::up(), 1000.0);
+    let perlin_material = Material::Metal { albedo: marble_tex, fuzziness: 0.75 };
+    let ground_material = Material::Lambertian { albedo: turb_tex };
+
+    scene.put(Collider::new(tex_sphere), perlin_material);
+    scene.put(Collider::new(ground_sphere), ground_material);
+    (
+        scene,
+        Camera::new(
+            camera_pos,
+            scene_center,
+            Vec3::up(),
+            90.0,
+            aspect,
+            0.0,
+            10.0,
+        ),
+    )
+}
+
 fn main() {
     let width = 1200 / 1;
     let height = 800 / 1;
     let aspect = width as f32 / height as f32;
-    let num_samples = 10;
+    let num_samples = 100;
     let delta_time = 1.0 / 30.0;
 
     let mut tmp_image = RgbImage::new(width, height);
 
-    let location = Vec3::new(13.0, 2.0, 3.0);
-    let look_at = Vec3::new(0.0, 0.0, 0.0);
-    let camera = Camera::new(location, look_at, Vec3::up(), 50.0, aspect, 0.1, 10.0);
-
-    let mut scene = random_scene();
+    let (mut scene, camera) = test_perlin_two_spheres(aspect);
     scene.compute_hierarchy(0.0, delta_time);
+    if let &Some(ref hierarchy) = &scene.hierarchy {
+        let mut total_volume = 0.0;
+        let mut num_volumes = 0.0;
+        for node in &hierarchy.hierarchy_heap {
+            if let BVHNode::Split(geom) = node {
+                num_volumes += 1.0;
+                total_volume += geom.volume();
+            }
+        }
+        println!("Average Bounding Volume: {}", total_volume / num_volumes);
+    }
 
     let mut rng = thread_rng();
     let between = Uniform::new(0.0, 1.0);
 
     let time = std::time::Instant::now();
 
-    let progress_bars = MultiProgress::new();
+    let progress_bar = ProgressBar::new((width * height * num_samples) as u64);
     let sty = ProgressStyle::default_bar()
         .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
         .progress_chars("#>-");
-    let column_bar = progress_bars.add(ProgressBar::new(width as u64));
-    column_bar.set_style(sty.clone());
-    let row_bar = progress_bars.add(ProgressBar::new(height as u64));
-    row_bar.set_style(sty.clone());
-    let pixel_bar = progress_bars.add(ProgressBar::new(num_samples as u64));
-    pixel_bar.set_style(sty.clone());
-
-    std::thread::spawn(move || {
-        progress_bars.join().unwrap();
-    });
+    progress_bar.set_style(sty);
 
     for x in 0..width {
-        column_bar.set_message(&format!("column #{}", x));
         for y in 0..height {
-            if y == 0 {
-                row_bar.reset();
-            }
-            row_bar.set_message(&format!("row #{}", y));
             let mut color_accumulator = Color::new(0.0, 0.0, 0.0);
-            for ray_number in 0..num_samples {
-                if ray_number == 0 {
-                    pixel_bar.reset();
-                }
-                pixel_bar.set_message(&format!("ray #{}", ray_number));
+            progress_bar.set_message(&format!("row: {} | col: {}", x, y));
+            for _ in 0..num_samples {
                 let u = (x as f32 + between.sample(&mut rng)) / (width as f32);
                 let v = (y as f32 + between.sample(&mut rng)) / (height as f32);
                 let ray = camera
                     .world_ray(u, v)
                     .cast_at(delta_time * rng.sample(between));
                 color_accumulator += color(ray, &scene, &mut rng, &between);
-                pixel_bar.inc(1);
+                progress_bar.inc(1);
             }
             color_accumulator /= num_samples as f32;
             let out_color = color_accumulator.gamma2_correct();
-            tmp_image.put_pixel(x, y, Rgb::from(out_color));
-            row_bar.inc(1);
+            tmp_image.put_pixel(x, y, out_color.into());
         }
-        column_bar.inc(1);
     }
-    pixel_bar.finish_with_message("done");
-    row_bar.finish_with_message("done");
-    column_bar.finish_with_message("done");
+    progress_bar.finish_with_message("done!");
     println!("Time to render: {}", time.elapsed().as_millis());
 
     tmp_image

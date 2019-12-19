@@ -3,10 +3,12 @@ use crate::math::ray::*;
 
 use crate::rendering::bvh::BoundingVolumeHierarchy;
 use crate::rendering::materials::Material;
+use crate::rendering::textures::{Texture, TextureAtlas, TextureIndex};
 
 pub struct Scene {
     pub renderables: Vec<Renderable>,
-    pub hierarchy: Option<BoundingVolumeHierarchy>
+    pub hierarchy: Option<BoundingVolumeHierarchy>,
+    pub texture_atlas: TextureAtlas,
 }
 
 pub struct Renderable {
@@ -18,8 +20,13 @@ impl Scene {
     pub fn new() -> Self {
         Scene {
             renderables: Vec::new(),
-            hierarchy: None
+            hierarchy: None,
+            texture_atlas: TextureAtlas::new(),
         }
+    }
+
+    pub fn add_texture(&mut self, texture: Texture) -> TextureIndex {
+        self.texture_atlas.add(texture)
     }
 
     pub fn put(&mut self, collider: Collider, material: Material) {
@@ -34,7 +41,7 @@ impl Scene {
         self.hierarchy = Some(BoundingVolumeHierarchy::construct(
             &self.renderables,
             t_min,
-            t_max
+            t_max,
         ));
     }
 

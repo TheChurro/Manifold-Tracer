@@ -8,6 +8,12 @@ pub struct SphereGeometry {
 }
 
 impl SphereGeometry {
+    pub fn new(center: Vec3, radius: f32) -> SphereGeometry {
+        SphereGeometry {
+            center: center,
+            radius: radius,
+        }
+    }
     pub fn offset(&self, offset: Vec3) -> SphereGeometry {
         SphereGeometry {
             center: self.center + offset,
@@ -43,10 +49,17 @@ impl RayCollidable for SphereGeometry {
             };
             if let Some(time) = hit_time {
                 let location = ray.point_at_parameter(time);
+                let rel_point = location - self.center;
+                let phi = rel_point.z.atan2(rel_point.x);
+                let theta = rel_point.y.asin();
+                use std::f32::consts::FRAC_PI_2;
+                use std::f32::consts::PI;
                 Some(RayHit {
                     hit_fraction: time,
                     location: location,
                     normal: (location - self.center) / self.radius,
+                    u: 1.0 - (phi + PI) / (2.0 * PI),
+                    v: (theta + FRAC_PI_2) / PI,
                 })
             } else {
                 None

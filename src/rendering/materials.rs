@@ -5,11 +5,20 @@ use crate::math::colors::Color;
 use crate::math::ray::{Ray, RayHit};
 use crate::math::vectors::Vec3;
 
+use crate::rendering::textures::{TextureAtlas, TextureIndex};
+
 #[derive(Copy, Clone)]
 pub enum Material {
-    Lambertian { albedo: Color },
-    Metal { albedo: Color, fuzziness: f32 },
-    Dielectric { index_of_refraction: f32 },
+    Lambertian {
+        albedo: TextureIndex,
+    },
+    Metal {
+        albedo: TextureIndex,
+        fuzziness: f32,
+    },
+    Dielectric {
+        index_of_refraction: f32,
+    },
 }
 
 fn point_in_sphere<T: Rng>(rng: &mut T, between: &Uniform<f32>) -> Vec3 {
@@ -56,16 +65,17 @@ impl Material {
         attenuation: &mut Color,
         rng: &mut T,
         between: &Uniform<f32>,
+        atlas: &TextureAtlas,
     ) -> Option<Ray> {
         use Material::*;
         match self {
             &Lambertian { albedo } => {
-                *attenuation = albedo;
+                *attenuation = atlas.evaluate(albedo, hit.u, hit.v, hit.location);
                 let target = hit.location + hit.normal + point_in_sphere(rng, between);
                 Some(Ray::look_at(hit.location, target))
             }
             &Metal { albedo, fuzziness } => {
-                *attenuation = albedo;
+                *attenuation = atlas.evaluate(albedo, hit.u, hit.v, hit.location);
                 let reflected_direction = reflect(ray.direction, hit.normal);
                 let freedom = f32::min(1.0f32, fuzziness);
                 let offset = reflected_direction + point_in_sphere(rng, between) * freedom;

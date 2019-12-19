@@ -36,12 +36,32 @@ impl From<Rgb<u8>> for Color {
     }
 }
 
+impl From<&Rgb<u8>> for Color {
+    fn from(val: &Rgb<u8>) -> Color {
+        Color {
+            r: f32::from(val.channels()[0]) / 255f32,
+            g: f32::from(val.channels()[1]) / 255f32,
+            b: f32::from(val.channels()[2]) / 255f32,
+        }
+    }
+}
+
+impl From<f32> for Color {
+    fn from(val: f32) -> Color {
+        Color {
+            r: val,
+            g: val,
+            b: val,
+        }
+    }
+}
+
 impl From<Color> for Rgb<u8> {
     fn from(color: Color) -> Rgb<u8> {
         Rgb([
-            f32::floor(color.r * 255f32) as u8,
-            f32::floor(color.g * 255f32) as u8,
-            f32::floor(color.b * 255f32) as u8,
+            f32::floor(color.r * 255.9f32).min(255.0).max(0.0) as u8,
+            f32::floor(color.g * 255.9f32).min(255.0).max(0.0) as u8,
+            f32::floor(color.b * 255.9f32).min(255.0).max(0.0) as u8,
         ])
     }
 }

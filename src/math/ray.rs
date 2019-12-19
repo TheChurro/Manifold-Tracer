@@ -32,6 +32,8 @@ pub struct RayHit {
     pub hit_fraction: f32,
     pub location: Vec3,
     pub normal: Vec3,
+    pub u: f32,
+    pub v: f32,
 }
 
 pub trait RayCollidable {

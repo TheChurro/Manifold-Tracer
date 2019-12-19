@@ -1,6 +1,6 @@
 use std::f32;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use std::ops::Index;
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Vec3 {
@@ -79,7 +79,7 @@ impl Vec3 {
         }
     }
 
-    pub fn left() -> Vec3 {
+    pub fn right() -> Vec3 {
         Vec3 {
             x: 1f32,
             y: 0f32,
@@ -120,7 +120,31 @@ impl Index<usize> for Vec3 {
             0 => &self.x,
             1 => &self.y,
             2 => &self.z,
-            _ => { panic!("Invalid index for vector!"); }
+            _ => {
+                panic!("Invalid index for vector!");
+            }
+        }
+    }
+}
+
+impl Neg for Vec3 {
+    type Output = Vec3;
+    fn neg(self) -> Vec3 {
+        Vec3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
+    }
+}
+
+impl Neg for &Vec3 {
+    type Output = Vec3;
+    fn neg(self) -> Vec3 {
+        Vec3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
         }
     }
 }

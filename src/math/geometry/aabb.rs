@@ -45,6 +45,10 @@ impl AABBGeometry {
     pub fn max(&self) -> Vec3 {
         self.center + self.extents.abs()
     }
+
+    pub fn volume(&self) -> f32 {
+        self.extents.x * self.extents.y * self.extents.z * 8.0
+    }
 }
 
 impl Add for AABBGeometry {
