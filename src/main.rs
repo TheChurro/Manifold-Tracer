@@ -14,6 +14,7 @@ use rand::{thread_rng, Rng, SeedableRng};
 use math::colliders::Collider;
 use math::colors::Color;
 use math::geometry::sphere::SphereGeometry;
+use math::geometry::rect::RectGeometry;
 use math::ray::Ray;
 use math::vectors::Vec3;
 
@@ -28,13 +29,16 @@ const MAX_TIME: f32 = 1000.0;
 const MAX_ITERATIONS: u32 = 50;
 
 fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32>) -> Color {
+    let mut confirmed_color = Color::zero();
     let mut color_absorbed = Color::new(1.0, 1.0, 1.0);
     for _ in 0..MAX_ITERATIONS {
         if let Some((hit, material)) = scene.cast(&ray, MIN_TIME, MAX_TIME) {
             let mut attenuation = Color::zero();
+            confirmed_color +=
+                color_absorbed * material.emit(&hit, rng, between, &scene.texture_atlas);
             if let Some(new_ray) = material.scatter(
                 &ray,
-                hit,
+                &hit,
                 &mut attenuation,
                 rng,
                 between,
@@ -43,14 +47,15 @@ fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32
                 color_absorbed *= attenuation;
                 ray = new_ray.cast_at(ray.cast_time);
             } else {
-                return Color::zero();
+                return confirmed_color;
             }
         // ray = ;
         } else {
             // Sky box coloring. Where does the ray hit out at infinity.
             let t = 0.5 * (ray.direction.y + 1.0);
-            return color_absorbed
-                * Color::lerp(Color::new(1.0, 1.0, 1.0), Color::new(0.5, 0.7, 1.0), t);
+            return confirmed_color
+                + color_absorbed
+                    * Color::lerp(Color::new(1.0, 1.0, 1.0), Color::new(0.5, 0.7, 1.0), t);
         }
     }
     // If we go for so long that we say we hit nothing, color the point black.
@@ -67,56 +72,56 @@ fn create_scene() -> Scene {
     );
     let checker_texture = scene.add_texture(checker_texture);
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(0.0, 0.0, -1.0),
             radius: 0.5,
-        }),
+        }.into(),
         Material::Lambertian {
             albedo: TextureIndex::Constant(Color::new(0.8, 0.3, 0.3)),
         },
     );
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(0.0, -100.5, -1.0),
             radius: 100.0,
-        }),
+        }.into(),
         Material::Lambertian {
             albedo: checker_texture,
         },
     );
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(1.0, 0.0, -1.0),
             radius: 0.5,
-        }),
+        }.into(),
         Material::Metal {
             albedo: TextureIndex::Constant(Color::new(0.8, 0.6, 0.2)),
             fuzziness: 0.0,
         },
     );
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(-1.0, -0.0, -1.0),
             radius: 0.5,
-        }),
+        }.into(),
         Material::Dielectric {
             index_of_refraction: 1.5,
         },
     );
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(-1.0, -0.0, -1.0),
             radius: -0.45,
-        }),
+        }.into(),
         Material::Dielectric {
             index_of_refraction: 1.5,
         },
     );
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(-1.0, -0.0, -1.0),
             radius: 0.25,
-        }),
+        }.into(),
         Material::Metal {
             albedo: TextureIndex::Constant(Color::new(0.5, 0.5, 1.0)),
             fuzziness: 0.0,
@@ -130,19 +135,19 @@ fn test_scene_two() -> Scene {
     let mut scene = Scene::new();
     let r = std::f32::consts::FRAC_PI_4.cos();
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(-r, 0.0, -1.0),
             radius: r,
-        }),
+        }.into(),
         Material::Lambertian {
             albedo: TextureIndex::Constant(Color::new(0.0, 0.0, 1.0)),
         },
     );
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(r, 0.0, -1.0),
             radius: r,
-        }),
+        }.into(),
         Material::Lambertian {
             albedo: TextureIndex::Constant(Color::new(1.0, 0.0, 0.0)),
         },
@@ -181,10 +186,10 @@ fn random_scene() -> Scene {
     );
     let checker_texture = scene.add_texture(checker_texture);
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(0.0, -1000.0, -1.0),
             radius: 1000.0,
-        }),
+        }.into(),
         Material::Lambertian {
             albedo: checker_texture,
         },
@@ -199,10 +204,10 @@ fn random_scene() -> Scene {
                 z as f32 + rng.sample(pos_range),
             );
             if (pos - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
-                let mut collider = Collider::new(SphereGeometry {
+                let mut collider: Collider = SphereGeometry {
                     center: pos,
                     radius: radius,
-                });
+                }.into();
                 let y_speed = rng.sample(speed_range);
                 if y_speed > 0.0 {
                     collider = collider.with_velocity(Vec3::new(
@@ -239,29 +244,29 @@ fn random_scene() -> Scene {
     }
 
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(0.0, 1.0, 0.0),
             radius: 1.0,
-        }),
+        }.into(),
         Material::Dielectric {
             index_of_refraction: 1.5,
         },
     );
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(4.0, 1.0, 0.0),
             radius: 1.0,
-        }),
+        }.into(),
         Material::Metal {
             albedo: TextureIndex::Constant(Color::new(0.7, 0.6, 0.5)),
             fuzziness: 0.0,
         },
     );
     scene.put(
-        Collider::new(SphereGeometry {
+        SphereGeometry {
             center: Vec3::new(-4.0, 1.0, 0.0),
             radius: 1.0,
-        }),
+        }.into(),
         Material::Lambertian {
             albedo: TextureIndex::Constant(Color::new(0.4, 0.2, 0.1)),
         },
@@ -278,8 +283,10 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
 
     let green_tex = scene.add_texture(Texture::Constant(Color::new(0.2, 0.3, 0.1)));
     let white_tex = scene.add_texture(Texture::Constant(Color::new(0.9, 0.9, 0.9)));
+    let red_tex = scene.add_texture(Texture::Constant(Color::new(1.0, 0.3, 0.1)));
+    let blue_tex = scene.add_texture(Texture::Constant(Color::new(0.1, 0.3, 1.0)));
     let checker_vol_tex = scene.add_texture(Texture::CheckerVolume(green_tex, white_tex, 0.5));
-    let checker_surf_tex = scene.add_texture(Texture::CheckerSurface(green_tex, white_tex, 20));
+    let checker_surf_tex = scene.add_texture(Texture::CheckerSurface(red_tex, blue_tex, 20));
     let marble_tex = scene.add_texture(Texture::Noise(
         2.0,
         7,
@@ -297,30 +304,33 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
 
     let test_sphere = SphereGeometry::new(Vec3::new(0.0, 1.0, 2.0), 1.0);
     let ground_sphere = SphereGeometry::new(-100.0 * Vec3::up(), 100.0);
+    let mirror_quad = RectGeometry::new(4.0 * Vec3::forward(), 2.0, 1.0);
 
     let ground_material = Material::Lambertian {
         albedo: checker_vol_tex,
     };
     let marble_material = Material::Lambertian { albedo: marble_tex };
-    let checker_material = Material::Metal {
-        albedo: checker_surf_tex,
-        fuzziness: 0.2,
+    let checker_material = Material::Emissive {
+        texture: checker_surf_tex,
+        amplify: 1.2,
     };
-    let earth_material = Material::Lambertian { albedo: earth_tex };
+    let earth_material = Material::Metal { albedo: earth_tex, fuzziness: 1.0 };
+    let mirror_material = Material::Metal { albedo: white_tex, fuzziness: 0.001 };
 
     scene.put(
-        Collider::new(test_sphere.offset(2.0 * Vec3::right())),
+        test_sphere.offset(2.0 * Vec3::right()).into(),
         marble_material,
     );
     scene.put(
-        Collider::new(test_sphere.offset(Vec3::up())),
-        earth_material,
-    );
-    scene.put(
-        Collider::new(test_sphere.offset(-2.0 * Vec3::right())),
+        test_sphere.offset(Vec3::up()).into(),
         checker_material,
     );
-    scene.put(Collider::new(ground_sphere), ground_material);
+    scene.put(
+        test_sphere.offset(-2.0 * Vec3::right()).into(),
+        earth_material,
+    );
+    scene.put(mirror_quad.into(), mirror_material);
+    scene.put(ground_sphere.into(), ground_material);
     (
         scene,
         Camera::new(
@@ -358,8 +368,8 @@ fn test_perlin_two_spheres(aspect: f32) -> (Scene, Camera) {
     };
     let ground_material = Material::Lambertian { albedo: turb_tex };
 
-    scene.put(Collider::new(tex_sphere), perlin_material);
-    scene.put(Collider::new(ground_sphere), ground_material);
+    scene.put(tex_sphere.into(), perlin_material);
+    scene.put(ground_sphere.into(), ground_material);
     (
         scene,
         Camera::new(
@@ -375,10 +385,10 @@ fn test_perlin_two_spheres(aspect: f32) -> (Scene, Camera) {
 }
 
 fn main() {
-    let width = 1200 / 1;
-    let height = 800 / 1;
+    let width = 1200 / 5;
+    let height = 800 / 5;
     let aspect = width as f32 / height as f32;
-    let num_samples = 25;
+    let num_samples = 50;
     let delta_time = 1.0 / 30.0;
 
     let mut tmp_image = RgbImage::new(width, height);

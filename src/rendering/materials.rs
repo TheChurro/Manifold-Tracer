@@ -19,6 +19,10 @@ pub enum Material {
     Dielectric {
         index_of_refraction: f32,
     },
+    Emissive {
+        texture: TextureIndex,
+        amplify: f32,
+    },
 }
 
 fn point_in_sphere<T: Rng>(rng: &mut T, between: &Uniform<f32>) -> Vec3 {
@@ -61,7 +65,7 @@ impl Material {
     pub fn scatter<T: Rng>(
         &self,
         ray: &Ray,
-        hit: RayHit,
+        hit: &RayHit,
         attenuation: &mut Color,
         rng: &mut T,
         between: &Uniform<f32>,
@@ -115,6 +119,23 @@ impl Material {
                 let offset = reflect(ray.direction, hit.normal);
                 Some(Ray::look_at(hit.location, hit.location + offset))
             }
+            &Emissive { .. } => None,
+        }
+    }
+
+    pub fn emit<T: Rng>(
+        &self,
+        ray_hit: &RayHit,
+        _rng: &mut T,
+        _between: &Uniform<f32>,
+        atlas: &TextureAtlas,
+    ) -> Color {
+        use Material::*;
+        match self {
+            &Emissive { texture, amplify } => {
+                amplify * atlas.evaluate(texture, ray_hit.u, ray_hit.v, ray_hit.location)
+            }
+            _ => Color::zero(),
         }
     }
 }
