@@ -1,11 +1,12 @@
-use crate::math::ray::{Ray, RayHit, RayCollidable};
-use crate::math::vectors::Vec3;
 use crate::math::geometry::aabb::AABBGeometry;
+use crate::math::ray::{Ray, RayCollidable, RayHit};
+use crate::math::vectors::Vec3;
 
+#[derive(Clone, Copy, Debug)]
 pub struct RectGeometry {
     pub center: Vec3,
     pub width: f32,
-    pub height: f32
+    pub height: f32,
 }
 
 impl RectGeometry {
@@ -13,7 +14,7 @@ impl RectGeometry {
         RectGeometry {
             center: center,
             width: width,
-            height: height
+            height: height,
         }
     }
 }
@@ -36,22 +37,22 @@ impl RayCollidable for RectGeometry {
         let target_pos = ray.point_at_parameter(t);
         let off = target_pos - self.center;
         let off_test = off.abs();
-        if off_test.x > self.width || off_test.y > self.height {
+        if off_test.x >= self.width / 2.0 || off_test.y >= self.height / 2.0 {
             return None;
         }
-        Some(RayHit{
+        Some(RayHit {
             hit_fraction: t,
             location: target_pos,
             normal: -Vec3::forward(),
             u: off.x / self.width + 0.5,
-            v: off.y / self.height + 0.5
+            v: off.y / self.height + 0.5,
         })
     }
 
     fn bounding_box(&self, _t_min: f32, _t_max: f32) -> Option<AABBGeometry> {
         Some(AABBGeometry {
             center: self.center,
-            extents: Vec3::new(self.width / 2.0, self.height / 2.0, 0.0001)
+            extents: Vec3::new(self.width / 2.0, self.height / 2.0, 0.0001),
         })
     }
 }

@@ -2,7 +2,7 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 use crate::math::vectors::Vec3;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Quaternion {
     pub a: f32,
     pub b: f32,
@@ -69,9 +69,9 @@ impl Quaternion {
         self.conj() / self.length_sq()
     }
     pub fn axis_angle(axis: Vec3, angle: f32) -> Quaternion {
-        let sine = angle.sin();
+        let sine = (angle / 2.0).sin();
         Quaternion {
-            a: angle.cos(),
+            a: (angle / 2.0).cos(),
             b: axis.x * sine,
             c: axis.y * sine,
             d: axis.z * sine,

@@ -1,6 +1,7 @@
 extern crate image;
 extern crate indicatif;
 extern crate rand;
+extern crate structopt;
 
 pub mod math;
 pub mod rendering;
@@ -10,11 +11,13 @@ use indicatif::{ProgressBar, ProgressStyle};
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::SmallRng;
 use rand::{thread_rng, Rng, SeedableRng};
+use structopt::StructOpt;
 
 use math::colliders::Collider;
 use math::colors::Color;
-use math::geometry::sphere::SphereGeometry;
 use math::geometry::rect::RectGeometry;
+use math::geometry::sphere::SphereGeometry;
+use math::quaternion::Quaternion;
 use math::ray::Ray;
 use math::vectors::Vec3;
 
@@ -25,7 +28,7 @@ use rendering::scene::Scene;
 use rendering::textures::{SampleMode, Texture, TextureIndex};
 
 const MIN_TIME: f32 = 0.001;
-const MAX_TIME: f32 = 1000.0;
+const MAX_TIME: f32 = 1000000.0;
 const MAX_ITERATIONS: u32 = 50;
 
 fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32>) -> Color {
@@ -51,15 +54,11 @@ fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32
             }
         // ray = ;
         } else {
-            // Sky box coloring. Where does the ray hit out at infinity.
-            let t = 0.5 * (ray.direction.y + 1.0);
-            return confirmed_color
-                + color_absorbed
-                    * Color::lerp(Color::new(1.0, 1.0, 1.0), Color::new(0.5, 0.7, 1.0), t);
+            return confirmed_color;
         }
     }
     // If we go for so long that we say we hit nothing, color the point black.
-    Color::zero()
+    confirmed_color
 }
 
 #[allow(dead_code)]
@@ -75,7 +74,8 @@ fn create_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(0.0, 0.0, -1.0),
             radius: 0.5,
-        }.into(),
+        }
+        .into(),
         Material::Lambertian {
             albedo: TextureIndex::Constant(Color::new(0.8, 0.3, 0.3)),
         },
@@ -84,7 +84,8 @@ fn create_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(0.0, -100.5, -1.0),
             radius: 100.0,
-        }.into(),
+        }
+        .into(),
         Material::Lambertian {
             albedo: checker_texture,
         },
@@ -93,7 +94,8 @@ fn create_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(1.0, 0.0, -1.0),
             radius: 0.5,
-        }.into(),
+        }
+        .into(),
         Material::Metal {
             albedo: TextureIndex::Constant(Color::new(0.8, 0.6, 0.2)),
             fuzziness: 0.0,
@@ -103,7 +105,8 @@ fn create_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(-1.0, -0.0, -1.0),
             radius: 0.5,
-        }.into(),
+        }
+        .into(),
         Material::Dielectric {
             index_of_refraction: 1.5,
         },
@@ -112,7 +115,8 @@ fn create_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(-1.0, -0.0, -1.0),
             radius: -0.45,
-        }.into(),
+        }
+        .into(),
         Material::Dielectric {
             index_of_refraction: 1.5,
         },
@@ -121,7 +125,8 @@ fn create_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(-1.0, -0.0, -1.0),
             radius: 0.25,
-        }.into(),
+        }
+        .into(),
         Material::Metal {
             albedo: TextureIndex::Constant(Color::new(0.5, 0.5, 1.0)),
             fuzziness: 0.0,
@@ -138,7 +143,8 @@ fn test_scene_two() -> Scene {
         SphereGeometry {
             center: Vec3::new(-r, 0.0, -1.0),
             radius: r,
-        }.into(),
+        }
+        .into(),
         Material::Lambertian {
             albedo: TextureIndex::Constant(Color::new(0.0, 0.0, 1.0)),
         },
@@ -147,7 +153,8 @@ fn test_scene_two() -> Scene {
         SphereGeometry {
             center: Vec3::new(r, 0.0, -1.0),
             radius: r,
-        }.into(),
+        }
+        .into(),
         Material::Lambertian {
             albedo: TextureIndex::Constant(Color::new(1.0, 0.0, 0.0)),
         },
@@ -189,7 +196,8 @@ fn random_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(0.0, -1000.0, -1.0),
             radius: 1000.0,
-        }.into(),
+        }
+        .into(),
         Material::Lambertian {
             albedo: checker_texture,
         },
@@ -207,7 +215,8 @@ fn random_scene() -> Scene {
                 let mut collider: Collider = SphereGeometry {
                     center: pos,
                     radius: radius,
-                }.into();
+                }
+                .into();
                 let y_speed = rng.sample(speed_range);
                 if y_speed > 0.0 {
                     collider = collider.with_velocity(Vec3::new(
@@ -247,7 +256,8 @@ fn random_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(0.0, 1.0, 0.0),
             radius: 1.0,
-        }.into(),
+        }
+        .into(),
         Material::Dielectric {
             index_of_refraction: 1.5,
         },
@@ -256,7 +266,8 @@ fn random_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(4.0, 1.0, 0.0),
             radius: 1.0,
-        }.into(),
+        }
+        .into(),
         Material::Metal {
             albedo: TextureIndex::Constant(Color::new(0.7, 0.6, 0.5)),
             fuzziness: 0.0,
@@ -266,13 +277,76 @@ fn random_scene() -> Scene {
         SphereGeometry {
             center: Vec3::new(-4.0, 1.0, 0.0),
             radius: 1.0,
-        }.into(),
+        }
+        .into(),
         Material::Lambertian {
             albedo: TextureIndex::Constant(Color::new(0.4, 0.2, 0.1)),
         },
     );
 
     scene
+}
+
+fn create_box(extents: Vec3) -> Collider {
+    let mut faces = Vec::new();
+    faces.push(Collider::from(RectGeometry::new(
+        -extents.z * Vec3::forward(),
+        2.0 * extents.x,
+        2.0 * extents.y,
+    )));
+    faces.push(
+        Collider::from(RectGeometry::new(
+            -extents.z * Vec3::forward(),
+            2.0 * extents.x,
+            2.0 * extents.y,
+        ))
+        .rotate(Quaternion::axis_angle(Vec3::up(), std::f32::consts::PI)),
+    );
+    faces.push(
+        Collider::from(RectGeometry::new(
+            -extents.x * Vec3::forward(),
+            2.0 * extents.z,
+            2.0 * extents.y,
+        ))
+        .rotate(Quaternion::axis_angle(
+            Vec3::up(),
+            std::f32::consts::FRAC_PI_2,
+        )),
+    );
+    faces.push(
+        Collider::from(RectGeometry::new(
+            -extents.x * Vec3::forward(),
+            2.0 * extents.z,
+            2.0 * extents.y,
+        ))
+        .rotate(Quaternion::axis_angle(
+            Vec3::up(),
+            -std::f32::consts::FRAC_PI_2,
+        )),
+    );
+    faces.push(
+        Collider::from(RectGeometry::new(
+            -extents.y * Vec3::forward(),
+            2.0 * extents.x,
+            2.0 * extents.z,
+        ))
+        .rotate(Quaternion::axis_angle(
+            Vec3::right(),
+            std::f32::consts::FRAC_PI_2,
+        )),
+    );
+    faces.push(
+        Collider::from(RectGeometry::new(
+            -extents.y * Vec3::forward(),
+            2.0 * extents.x,
+            2.0 * extents.z,
+        ))
+        .rotate(Quaternion::axis_angle(
+            Vec3::right(),
+            -std::f32::consts::FRAC_PI_2,
+        )),
+    );
+    Collider::Union(faces)
 }
 
 #[allow(dead_code)]
@@ -285,7 +359,7 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
     let white_tex = scene.add_texture(Texture::Constant(Color::new(0.9, 0.9, 0.9)));
     let red_tex = scene.add_texture(Texture::Constant(Color::new(1.0, 0.3, 0.1)));
     let blue_tex = scene.add_texture(Texture::Constant(Color::new(0.1, 0.3, 1.0)));
-    let checker_vol_tex = scene.add_texture(Texture::CheckerVolume(green_tex, white_tex, 0.5));
+    let checker_vol_tex = scene.add_texture(Texture::CheckerVolume(green_tex, blue_tex, 0.5));
     let checker_surf_tex = scene.add_texture(Texture::CheckerSurface(red_tex, blue_tex, 20));
     let marble_tex = scene.add_texture(Texture::Noise(
         2.0,
@@ -302,9 +376,9 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
         SampleMode::Wrap,
     ));
 
-    let test_sphere = SphereGeometry::new(Vec3::new(0.0, 1.0, 2.0), 1.0);
+    let test_sphere = SphereGeometry::new(Vec3::new(0.0, 0.0, 0.0), 1.0);
     let ground_sphere = SphereGeometry::new(-100.0 * Vec3::up(), 100.0);
-    let mirror_quad = RectGeometry::new(4.0 * Vec3::forward(), 2.0, 1.0);
+    let mirror_quad = RectGeometry::new(Vec3::zero(), 2.0, 1.0);
 
     let ground_material = Material::Lambertian {
         albedo: checker_vol_tex,
@@ -314,22 +388,38 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
         texture: checker_surf_tex,
         amplify: 1.2,
     };
-    let earth_material = Material::Metal { albedo: earth_tex, fuzziness: 1.0 };
-    let mirror_material = Material::Metal { albedo: white_tex, fuzziness: 0.001 };
+    let earth_material = Material::Metal {
+        albedo: earth_tex,
+        fuzziness: 1.0,
+    };
+    let mirror_material = Material::Lambertian {
+        albedo: white_tex,
+        //fuzziness: 0.001,
+    };
 
     scene.put(
-        test_sphere.offset(2.0 * Vec3::right()).into(),
+        test_sphere.offset(Vec3::new(2.0, 1.0, 2.0)).into(),
         marble_material,
     );
     scene.put(
-        test_sphere.offset(Vec3::up()).into(),
+        test_sphere.offset(Vec3::new(0.0, 2.0, 2.0)).into(),
         checker_material,
     );
     scene.put(
-        test_sphere.offset(-2.0 * Vec3::right()).into(),
+        Collider::from(test_sphere)
+            .rotate(Quaternion::axis_angle(Vec3::right(), std::f32::consts::PI))
+            .translate(Vec3::new(-2.0, 1.0, 2.0)),
         earth_material,
     );
-    scene.put(mirror_quad.into(), mirror_material);
+    scene.put(
+        Collider::from(mirror_quad)
+            .rotate(Quaternion::axis_angle(
+                Vec3::right(),
+                std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(4.0 * Vec3::forward()),
+        mirror_material,
+    );
     scene.put(ground_sphere.into(), ground_material);
     (
         scene,
@@ -384,16 +474,131 @@ fn test_perlin_two_spheres(aspect: f32) -> (Scene, Camera) {
     )
 }
 
+#[allow(dead_code)]
+fn cornell_box(aspect: f32) -> (Scene, Camera) {
+    let mut scene = Scene::new();
+    let camera_pos = Vec3::new(0.0, 275.0, -800.0);
+    let scene_center = Vec3::new(0.0, 275.0, 0.0);
+
+    let red_tex = scene.add_texture(Texture::Constant(Color::new(0.65, 0.05, 0.05)));
+    let white_tex = scene.add_texture(Texture::Constant(Color::new(0.73, 0.73, 0.73)));
+    let green_tex = scene.add_texture(Texture::Constant(Color::new(0.12, 0.45, 0.15)));
+    let light_tex = scene.add_texture(Texture::Constant(Color::new(7.0, 7.0, 7.0)));
+
+    let red_mat = Material::Lambertian { albedo: red_tex };
+    let white_mat = Material::Lambertian { albedo: white_tex };
+    let green_mat = Material::Lambertian { albedo: green_tex };
+    let light_mat = Material::Emissive {
+        texture: light_tex,
+        amplify: 1.0,
+    };
+
+    let box_rect = RectGeometry::new(Vec3::zero(), 550.5, 555.5);
+    let light_rect = RectGeometry::new(Vec3::zero(), 200.0, 200.0);
+
+    scene.put(
+        Collider::from(box_rect).translate(555.0 * 0.5 * Vec3::up() + 555.0 * Vec3::forward()),
+        white_mat,
+    );
+    scene.put(
+        Collider::from(box_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::right(),
+                std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(555.0 * 0.5 * Vec3::forward()),
+        white_mat,
+    );
+    scene.put(
+        Collider::from(box_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::right(),
+                -std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(555.0 * Vec3::up() + 555.0 * 0.5 * Vec3::forward()),
+        white_mat,
+    );
+    scene.put(
+        Collider::from(light_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::right(),
+                -std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(554.5 * Vec3::up() + 555.0 * 0.5 * Vec3::forward()),
+        light_mat,
+    );
+    scene.put(
+        Collider::from(box_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::up(),
+                std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(0.5 * Vec3::new(555.0, 555.0, 555.0)),
+        green_mat,
+    );
+    scene.put(
+        Collider::from(box_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::up(),
+                -std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(0.5 * Vec3::new(-555.0, 555.0, 555.0)),
+        red_mat,
+    );
+    scene.put(
+        create_box(Vec3::new(82.5, 82.5, 82.5))
+            .rotate(Quaternion::axis_angle(Vec3::up(), 18.0f32.to_radians()))
+            .translate(Vec3::new(65.5, 82.5, 147.5)),
+        white_mat,
+    );
+    scene.put(
+        create_box(Vec3::new(82.5, 165.0, 82.5))
+            .rotate(Quaternion::axis_angle(Vec3::up(), -15.0f32.to_radians()))
+            .translate(Vec3::new(-72.5, 165.0, 377.5)),
+        white_mat,
+    );
+
+    // Compute a vfov which covers the entire entry to the box.
+    let half_height = 275.0f32 / 800.0;
+    let half_theta = half_height.atan();
+    let vfov = half_theta * 2.0 * 180.0 / std::f32::consts::PI;
+
+    (
+        scene,
+        Camera::new(
+            camera_pos,
+            scene_center,
+            Vec3::up(),
+            vfov,
+            aspect,
+            0.0,
+            800.0,
+        ),
+    )
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "manifold-tracer")]
+struct Options {
+    #[structopt(short, long, default_value="200")]
+    width: u32,
+    #[structopt(short, long, default_value="200")]
+    height: u32,
+    #[structopt(short, long, default_value="10")]
+    samples: u32,
+    #[structopt(short, long, default_value="output/test.png")]
+    out_file: std::path::PathBuf,
+}
+
 fn main() {
-    let width = 1200 / 5;
-    let height = 800 / 5;
-    let aspect = width as f32 / height as f32;
-    let num_samples = 50;
+    let options = Options::from_args();
+
+    let aspect = options.width as f32 / options.height as f32;
     let delta_time = 1.0 / 30.0;
 
-    let mut tmp_image = RgbImage::new(width, height);
+    let mut tmp_image = RgbImage::new(options.width, options.height);
 
-    let (mut scene, camera) = test_textures_scene(aspect);
+    let (mut scene, camera) = cornell_box(aspect);
     scene.compute_hierarchy(0.0, delta_time);
     if let &Some(ref hierarchy) = &scene.hierarchy {
         let mut total_volume = 0.0;
@@ -406,32 +611,36 @@ fn main() {
         }
         println!("Average Bounding Volume: {}", total_volume / num_volumes);
     }
+    println!(
+        "Camera: ({:?}, {:?}, {:?})",
+        camera.horizontal, camera.vertical, camera.forward
+    );
 
     let mut rng = thread_rng();
     let between = Uniform::new(0.0, 1.0);
 
     let time = std::time::Instant::now();
 
-    let progress_bar = ProgressBar::new((width * height * num_samples) as u64);
+    let progress_bar = ProgressBar::new((options.width * options.height * options.samples) as u64);
     let sty = ProgressStyle::default_bar()
         .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
         .progress_chars("#>-");
     progress_bar.set_style(sty);
 
-    for x in 0..width {
-        for y in 0..height {
+    for x in 0..options.width {
+        for y in 0..options.height {
             let mut color_accumulator = Color::new(0.0, 0.0, 0.0);
             progress_bar.set_message(&format!("row: {} | col: {}", x, y));
-            for _ in 0..num_samples {
-                let u = (x as f32 + between.sample(&mut rng)) / (width as f32);
-                let v = (y as f32 + between.sample(&mut rng)) / (height as f32);
+            for _ in 0..options.samples {
+                let u = (x as f32 + between.sample(&mut rng)) / (options.width as f32);
+                let v = (y as f32 + between.sample(&mut rng)) / (options.height as f32);
                 let ray = camera
                     .world_ray(u, v)
                     .cast_at(delta_time * rng.sample(between));
                 color_accumulator += color(ray, &scene, &mut rng, &between);
                 progress_bar.inc(1);
             }
-            color_accumulator /= num_samples as f32;
+            color_accumulator /= options.samples as f32;
             let out_color = color_accumulator.gamma2_correct();
             tmp_image.put_pixel(x, y, out_color.into());
         }
@@ -440,6 +649,6 @@ fn main() {
     println!("Time to render: {}", time.elapsed().as_millis());
 
     tmp_image
-        .save("output/test.png")
+        .save(options.out_file)
         .expect("Failed to save image.");
 }

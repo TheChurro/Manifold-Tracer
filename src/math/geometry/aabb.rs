@@ -1,5 +1,6 @@
-use std::ops::{Add, AddAssign};
+use std::ops::{Add, AddAssign, Mul};
 
+use crate::math::quaternion::Quaternion;
 use crate::math::ray::Ray;
 use crate::math::vectors::Vec3;
 
@@ -100,5 +101,68 @@ impl AddAssign<&AABBGeometry> for AABBGeometry {
         let min = self.min().min(&rhs.min());
         let max = self.max().max(&rhs.max());
         *self = AABBGeometry::from_points(min, max);
+    }
+}
+
+impl Add<Vec3> for AABBGeometry {
+    type Output = AABBGeometry;
+    fn add(self, rhs: Vec3) -> AABBGeometry {
+        AABBGeometry {
+            center: self.center + rhs,
+            extents: self.extents,
+        }
+    }
+}
+
+impl Add<Vec3> for &AABBGeometry {
+    type Output = AABBGeometry;
+    fn add(self, rhs: Vec3) -> AABBGeometry {
+        AABBGeometry {
+            center: self.center + rhs,
+            extents: self.extents,
+        }
+    }
+}
+
+impl Add<&Vec3> for AABBGeometry {
+    type Output = AABBGeometry;
+    fn add(self, rhs: &Vec3) -> AABBGeometry {
+        AABBGeometry {
+            center: self.center + rhs,
+            extents: self.extents,
+        }
+    }
+}
+
+impl Add<&Vec3> for &AABBGeometry {
+    type Output = AABBGeometry;
+    fn add(self, rhs: &Vec3) -> AABBGeometry {
+        AABBGeometry {
+            center: self.center + rhs,
+            extents: self.extents,
+        }
+    }
+}
+
+impl Mul<AABBGeometry> for Quaternion {
+    type Output = AABBGeometry;
+    fn mul(self, rhs: AABBGeometry) -> AABBGeometry {
+        let mut min = Vec3::all(std::f32::INFINITY);
+        let mut max = Vec3::all(std::f32::NEG_INFINITY);
+        for x_sign in &[-1.0, 1.0] {
+            for y_sign in &[-1.0, 1.0] {
+                for z_sign in &[-1.0, 1.0] {
+                    let offset = Vec3 {
+                        x: x_sign * rhs.extents.x,
+                        y: y_sign * rhs.extents.y,
+                        z: z_sign * rhs.extents.z,
+                    };
+                    let rot_offset = self * offset + rhs.center;
+                    min = min.min(&rot_offset);
+                    max = max.max(&rot_offset);
+                }
+            }
+        }
+        AABBGeometry::from_points(min, max)
     }
 }

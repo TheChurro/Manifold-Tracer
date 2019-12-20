@@ -46,33 +46,36 @@ impl Camera {
             forward /= forward_length;
         }
         let rotation = Quaternion::look_at(forward, up);
+        println!("Rotation: {:?}", rotation);
         let extents = Vec3::new(aspect * half_height, half_height, 1.0);
         Camera {
             location: location,
             extents: extents * focus_dist,
-            horizontal: 2.0 * rotation * Vec3::new(aspect * half_height, 0.0, 0.0) * focus_dist,
-            vertical: 2.0 * rotation * Vec3::new(0.0, half_height, 0.0) * focus_dist,
+            horizontal: 2.0 * (rotation * Vec3::new(aspect * half_height, 0.0, 0.0) * focus_dist),
+            vertical: 2.0 * (rotation * Vec3::new(0.0, half_height, 0.0) * focus_dist),
             forward: rotation * Vec3::new(0.0, 0.0, 1.0) * focus_dist,
             lens_radius: aperture / 2.0,
             orientation: rotation,
         }
     }
 
-    pub fn bottom_left(&self) -> Vec3 {
-        self.location - 0.5f32 * self.horizontal - 0.5f32 * self.vertical + self.forward
-    }
-
     /// Convert a point in camera space into world space.
     pub fn world_ray(&self, u: f32, v: f32) -> Ray {
         let lens_point = self.lens_radius * random_point_on_disk();
-        let start_offset = self.location + self.orientation * lens_point;
-        Ray::look_at(
-            self.location + start_offset,
-            self.location
-                + self.forward
-                + (u - 0.5f32) * self.horizontal
-                + (0.5f32 - v) * self.vertical,
-        )
-        // We want to start at top left corner. So the vertical needs to flip how it computes
+        let start = self.location + self.orientation * lens_point;
+        let end = self.location
+            + self.forward
+            + (u - 0.5f32) * self.horizontal
+            // Flip vertical because (0, 0) represents the top left corner.
+            + (0.5f32 - v) * self.vertical;
+        Ray::look_at(start, end)
+    }
+
+    pub fn world_ray_end(&self, u: f32, v: f32) -> Vec3 {
+        self.location
+            + self.forward
+            + (u - 0.5f32) * self.horizontal
+            // Flip vertical because (0, 0) represents the top left corner.
+            + (0.5f32 - v) * self.vertical
     }
 }
