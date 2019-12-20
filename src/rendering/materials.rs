@@ -1,5 +1,6 @@
 use rand::distributions::Uniform;
 use rand::Rng;
+use rand_distr::{Distribution, UnitSphere};
 
 use crate::math::colors::Color;
 use crate::math::ray::{Ray, RayHit};
@@ -23,6 +24,9 @@ pub enum Material {
         texture: TextureIndex,
         amplify: f32,
     },
+    Isotropic {
+        albedo: TextureIndex
+    }
 }
 
 fn point_in_sphere<T: Rng>(rng: &mut T, between: &Uniform<f32>) -> Vec3 {
@@ -120,6 +124,10 @@ impl Material {
                 Some(Ray::look_at(hit.location, hit.location + offset))
             }
             &Emissive { .. } => None,
+            &Isotropic { albedo } => {
+                *attenuation = atlas.evaluate(albedo, hit.u, hit.v, hit.location);
+                Some(Ray::new(hit.location, UnitSphere.sample(rng).into()))
+            }
         }
     }
 

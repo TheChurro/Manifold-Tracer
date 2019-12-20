@@ -1,6 +1,7 @@
 use crate::math::geometry::aabb::AABBGeometry;
 use crate::math::geometry::rect::RectGeometry;
 use crate::math::geometry::sphere::SphereGeometry;
+use crate::math::geometry::volumes::ConstantVolume;
 use crate::math::quaternion::Quaternion;
 use crate::math::ray::{Ray, RayCollidable, RayHit};
 use crate::math::vectors::Vec3;
@@ -9,6 +10,7 @@ pub enum Collider {
     Sphere(SphereGeometry),
     SphereWithVelocity(SphereGeometry, Vec3),
     Rect(RectGeometry),
+    Volume(ConstantVolume),
     Translate(Vec3, Box<Collider>),
     Rotate(Quaternion, Box<Collider>),
     Union(Vec<Collider>),
@@ -26,6 +28,7 @@ impl RayCollidable for Collider {
                 Some(begin_aabb.unwrap() + end_aabb.unwrap())
             }
             &Rect(ref geometry) => geometry.bounding_box(t_min, t_max),
+            &Volume(ref volume) => volume.bounding_box(t_min, t_max),
             &Translate(offset, ref collider) => {
                 collider.bounding_box(t_min, t_max).map(|x| x + offset)
             }
@@ -60,6 +63,7 @@ impl RayCollidable for Collider {
                 .offset(velocity * ray.cast_time)
                 .hit(ray, t_min, t_max),
             &Rect(ref geometry) => geometry.hit(ray, t_min, t_max),
+            &Volume(ref volume) => volume.hit(ray, t_min, t_max),
             &Translate(offset, ref collider) => {
                 let offset_ray = Ray {
                     cast_time: ray.cast_time,
@@ -97,9 +101,7 @@ impl RayCollidable for Collider {
                         best_hit = Some(hit);
                     }
                 }
-                if best_hit.is_some() {
-
-                }
+                if best_hit.is_some() {}
                 best_hit
             }
         }
@@ -125,6 +127,7 @@ impl Collider {
             Sphere(geometry) => SphereWithVelocity(geometry, velocity),
             SphereWithVelocity(geometry, _) => SphereWithVelocity(geometry, velocity),
             Rect(geometry) => Rect(geometry),
+            Volume(vol) => Volume(vol),
             Translate(offset, collider) => Translate(offset, collider),
             Rotate(rotation, collider) => Rotate(rotation, collider),
             Union(colliders) => Union(colliders),
@@ -137,5 +140,12 @@ impl Collider {
 
     pub fn rotate(self, rotation: Quaternion) -> Collider {
         Collider::Rotate(rotation, Box::new(self))
+    }
+
+    pub fn to_volume(self, density: f32) -> Collider {
+        Collider::Volume(ConstantVolume{
+            boundary: Box::new(self),
+            density: density
+        })
     }
 }

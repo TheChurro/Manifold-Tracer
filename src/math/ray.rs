@@ -9,6 +9,14 @@ pub struct Ray {
 }
 
 impl Ray {
+    pub fn new(origin: Vec3, direction: Vec3) -> Ray {
+        Ray {
+            origin: origin,
+            direction: direction.normalized(),
+            cast_time: 0.0,
+        }
+    }
+
     pub fn look_at(origin: Vec3, target: Vec3) -> Ray {
         Ray {
             origin: origin,

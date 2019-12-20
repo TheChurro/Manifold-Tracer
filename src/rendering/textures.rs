@@ -72,7 +72,7 @@ impl TextureAtlas {
                         Image(image, mode) => {
                             let x = f32::floor(image.width() as f32 * u);
                             let x = mode.adjust(x, image.width());
-                            let y = f32::floor(image.height() as f32 * v);
+                            let y = f32::floor(image.height() as f32 * (1.0 - v));
                             let y = mode.adjust(y, image.height());
                             let color_ = image.get_pixel(x, y);
                             return color_.into();
