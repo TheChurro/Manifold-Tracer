@@ -1,6 +1,6 @@
 use rand::distributions::Uniform;
 use rand::Rng;
-use rand_distr::{Distribution, UnitSphere};
+use rand_distr::{Distribution, UnitSphere, UnitBall};
 
 use crate::math::colors::Color;
 use crate::math::ray::{Ray, RayHit};
@@ -8,7 +8,7 @@ use crate::math::vectors::Vec3;
 
 use crate::rendering::textures::{TextureAtlas, TextureIndex};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Material {
     Lambertian {
         albedo: TextureIndex,
@@ -26,21 +26,8 @@ pub enum Material {
     },
     Isotropic {
         albedo: TextureIndex
-    }
-}
-
-fn point_in_sphere<T: Rng>(rng: &mut T, between: &Uniform<f32>) -> Vec3 {
-    loop {
-        let random_vec = Vec3 {
-            x: rng.sample(between),
-            y: rng.sample(between),
-            z: rng.sample(between),
-        };
-        let random_vec_adjusted = random_vec * 2.0 - Vec3::new(1.0, 1.0, 1.0);
-        if random_vec_adjusted.length_sq() <= 1.0 {
-            return random_vec_adjusted;
-        }
-    }
+    },
+    Projective
 }
 
 pub fn reflect(target: Vec3, normal: Vec3) -> Vec3 {
@@ -79,14 +66,14 @@ impl Material {
         match self {
             &Lambertian { albedo } => {
                 *attenuation = atlas.evaluate(albedo, hit.u, hit.v, hit.location);
-                let target = hit.location + hit.normal + point_in_sphere(rng, between);
+                let target = hit.location + hit.normal + Vec3::from(UnitBall.sample(rng));
                 Some(Ray::look_at(hit.location, target))
             }
             &Metal { albedo, fuzziness } => {
                 *attenuation = atlas.evaluate(albedo, hit.u, hit.v, hit.location);
                 let reflected_direction = reflect(ray.direction, hit.normal);
                 let freedom = f32::min(1.0f32, fuzziness);
-                let offset = reflected_direction + point_in_sphere(rng, between) * freedom;
+                let offset: Vec3 = reflected_direction + Vec3::from(UnitBall.sample(rng)) * freedom;
                 let next_ray = Ray::look_at(hit.location, hit.location + offset);
                 // Only cast a new ray if we notice we are sending it to the outside
                 // If it would bounce back in, we just stop... Is this desired behaviour?
@@ -126,7 +113,12 @@ impl Material {
             &Emissive { .. } => None,
             &Isotropic { albedo } => {
                 *attenuation = atlas.evaluate(albedo, hit.u, hit.v, hit.location);
-                Some(Ray::new(hit.location, UnitSphere.sample(rng).into()))
+                let out_dir = UnitSphere.sample(rng).into();
+                Some(Ray::new(hit.location, out_dir))
+            }
+            &Projective => {
+                *attenuation = Color::new(1.0, 1.0, 1.0);
+                Some(Ray::new(-hit.location, ray.direction))
             }
         }
     }

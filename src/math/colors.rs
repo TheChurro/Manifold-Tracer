@@ -95,3 +95,10 @@ impl Color {
         }
     }
 }
+
+use std::fmt;
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {}, {})", self.r, self.g, self.b)
+    }
+}

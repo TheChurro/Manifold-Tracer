@@ -5,7 +5,7 @@ use crate::math::vectors::Vec3;
 
 use crate::rendering::perlin::Perlin;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum TextureIndex {
     Constant(Color),
     Reference(usize),

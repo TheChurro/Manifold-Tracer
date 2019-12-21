@@ -9,7 +9,6 @@ extern crate clap;
 pub mod math;
 pub mod rendering;
 
-use std::str::FromStr;
 use image::RgbImage;
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::distributions::{Distribution, Uniform};
@@ -32,7 +31,7 @@ use rendering::scene::Scene;
 use rendering::textures::{SampleMode, Texture, TextureIndex};
 
 const MIN_TIME: f32 = 0.001;
-const MAX_TIME: f32 = 1000000.0;
+const MAX_TIME: f32 = std::f32::MAX;
 const MAX_ITERATIONS: u32 = 50;
 
 fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32>) -> Color {
@@ -56,7 +55,6 @@ fn color<T: Rng>(mut ray: Ray, scene: &Scene, rng: &mut T, between: &Uniform<f32
             } else {
                 return confirmed_color;
             }
-        // ray = ;
         } else {
             return confirmed_color;
         }
@@ -362,7 +360,6 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
     let green_tex = scene.add_texture(Texture::Constant(Color::new(0.2, 0.3, 0.1)));
     let white_tex = scene.add_texture(Texture::Constant(Color::new(0.9, 0.9, 0.9)));
     let red_tex = scene.add_texture(Texture::Constant(Color::new(1.0, 0.3, 0.1)));
-    let blue_tex = scene.add_texture(Texture::Constant(Color::new(0.1, 0.3, 1.0)));
     let checker_vol_tex = scene.add_texture(Texture::CheckerVolume(green_tex, white_tex, 0.5));
     let checker_surf_tex = scene.add_texture(Texture::CheckerSurface(red_tex, white_tex, 20));
     let marble_tex = scene.add_texture(Texture::Noise(
@@ -383,7 +380,6 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
     let test_sphere = SphereGeometry::new(Vec3::new(0.0, 0.0, 0.0), 1.0);
     let gas_sphere = SphereGeometry::new(Vec3::new(0.0, 0.0, 2.0), 5.0);
     let ground_sphere = SphereGeometry::new(-100.0 * Vec3::up(), 100.0);
-    let mirror_sphere = SphereGeometry::new(Vec3::zero(), -100.0);
 
     let ground_material = Material::Lambertian {
         albedo: checker_vol_tex,
@@ -399,10 +395,6 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
     };
     let smoke_material = Material::Isotropic {
         albedo: white_tex,
-    };
-    let mirror_material = Material::Metal {
-        albedo: white_tex,
-        fuzziness: 0.0
     };
 
     scene.put(
@@ -486,18 +478,18 @@ fn cornell_box(aspect: f32) -> (Scene, Camera) {
     let red_tex = scene.add_texture(Texture::Constant(Color::new(0.65, 0.05, 0.05)));
     let white_tex = scene.add_texture(Texture::Constant(Color::new(0.73, 0.73, 0.73)));
     let green_tex = scene.add_texture(Texture::Constant(Color::new(0.12, 0.45, 0.15)));
-    let light_tex = scene.add_texture(Texture::Constant(Color::new(7.0, 7.0, 7.0)));
+    let light_tex = scene.add_texture(Texture::Constant(Color::new(1.0, 1.0, 1.0)));
 
     let red_mat = Material::Lambertian { albedo: red_tex };
     let white_mat = Material::Lambertian { albedo: white_tex };
     let green_mat = Material::Lambertian { albedo: green_tex };
     let light_mat = Material::Emissive {
         texture: light_tex,
-        amplify: 1.0,
+        amplify: 15.0,
     };
 
     let box_rect = RectGeometry::new(Vec3::zero(), 555.5, 555.5);
-    let light_rect = RectGeometry::new(Vec3::zero(), 200.0, 200.0);
+    let light_rect = RectGeometry::new(Vec3::zero(), 130.0, 105.0);
 
     scene.put(
         Collider::from(box_rect).translate(555.0 * 0.5 * Vec3::up() + 555.0 * Vec3::forward()),
@@ -589,14 +581,14 @@ fn cornell_box_with_haze(aspect: f32) -> (Scene, Camera) {
     let red_tex = scene.add_texture(Texture::Constant(Color::new(0.65, 0.05, 0.05)));
     let white_tex = scene.add_texture(Texture::Constant(Color::new(0.73, 0.73, 0.73)));
     let green_tex = scene.add_texture(Texture::Constant(Color::new(0.12, 0.45, 0.15)));
-    let light_tex = scene.add_texture(Texture::Constant(Color::new(3.0, 3.0, 3.0)));
+    let light_tex = scene.add_texture(Texture::Constant(Color::new(1.0, 1.0, 1.0)));
 
     let red_mat = Material::Lambertian { albedo: red_tex };
     let white_mat = Material::Lambertian { albedo: white_tex };
     let green_mat = Material::Lambertian { albedo: green_tex };
     let light_mat = Material::Emissive {
         texture: light_tex,
-        amplify: 1.0,
+        amplify: 7.0,
     };
 
     let pure_white_tex = scene.add_texture(Texture::Constant(Color::new(1.0, 1.0, 1.0)));
@@ -605,7 +597,7 @@ fn cornell_box_with_haze(aspect: f32) -> (Scene, Camera) {
     let black_smoke_mat = Material::Isotropic { albedo: pure_black_tex };
 
     let box_rect = RectGeometry::new(Vec3::zero(), 555.5, 555.5);
-    let light_rect = RectGeometry::new(Vec3::zero(), 400.0, 400.0);
+    let light_rect = RectGeometry::new(Vec3::zero(), 300.0, 300.0);
 
     scene.put(
         Collider::from(box_rect).translate(555.0 * 0.5 * Vec3::up() + 555.0 * Vec3::forward()),
@@ -661,18 +653,123 @@ fn cornell_box_with_haze(aspect: f32) -> (Scene, Camera) {
             .rotate(Quaternion::axis_angle(Vec3::up(), 18.0f32.to_radians()))
             .translate(Vec3::new(65.5, 82.5, 147.5))
             .to_volume(0.01),
-        white_smoke_mat,
+        if false { white_mat } else { white_smoke_mat },
     );
     scene.put(
         create_box(Vec3::new(82.5, 165.0, 82.5))
             .rotate(Quaternion::axis_angle(Vec3::up(), -15.0f32.to_radians()))
             .translate(Vec3::new(-72.5, 165.0, 377.5))
             .to_volume(0.01),
-        black_smoke_mat,
+        if false { white_mat } else { black_smoke_mat },
     );
 
     // Compute a vfov which covers the entire entry to the box.
     let half_height = 275.0f32 / 800.0;
+    let half_theta = half_height.atan();
+    let vfov = half_theta * 2.0 * 180.0 / std::f32::consts::PI;
+
+    (
+        scene,
+        Camera::new(
+            camera_pos,
+            scene_center,
+            Vec3::up(),
+            vfov,
+            aspect,
+            0.0,
+            800.0,
+        ),
+    )
+}
+
+#[allow(dead_code)]
+fn cornell_projective_space(aspect: f32) -> (Scene, Camera) {
+    let mut scene = Scene::new();
+    let camera_pos = Vec3::new(0.0, 275.0, -500.0);
+    let scene_center = Vec3::new(0.0, 275.0, 0.0);
+
+    let red_tex = scene.add_texture(Texture::Constant(Color::new(0.65, 0.05, 0.05)));
+    let white_tex = scene.add_texture(Texture::Constant(Color::new(0.73, 0.73, 0.73)));
+    let green_tex = scene.add_texture(Texture::Constant(Color::new(0.12, 0.45, 0.15)));
+    let light_tex = scene.add_texture(Texture::Constant(Color::new(1.0, 1.0, 1.0)));
+
+    let red_mat = Material::Lambertian { albedo: red_tex };
+    let white_mat = Material::Lambertian { albedo: white_tex };
+    let green_mat = Material::Lambertian { albedo: green_tex };
+    let light_mat = Material::Emissive {
+        texture: light_tex,
+        amplify: 15.0,
+    };
+
+    let box_rect = RectGeometry::new(Vec3::zero(), 200.0, 200.0);
+    let light_rect = RectGeometry::new(Vec3::zero(), 100.0, 100.0);
+    let projective_sphere = SphereGeometry::new(Vec3::zero(), -800.0);
+
+    scene.put(projective_sphere.into(), green_mat);
+    scene.put(
+        Collider::from(box_rect).translate(555.0 * 0.5 * Vec3::up() + 555.0 * Vec3::forward()),
+        white_mat,
+    );
+    scene.put(
+        Collider::from(box_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::right(),
+                std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(555.0 * 0.5 * Vec3::forward()),
+        white_mat,
+    );
+    scene.put(
+        Collider::from(box_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::right(),
+                -std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(555.0 * Vec3::up() + 555.0 * 0.5 * Vec3::forward()),
+        white_mat,
+    );
+    scene.put(
+        Collider::from(light_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::right(),
+                -std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(554.5 * Vec3::up() + 555.0 * 0.5 * Vec3::forward()),
+        light_mat,
+    );
+    scene.put(
+        Collider::from(box_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::up(),
+                std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(0.5 * Vec3::new(555.0, 555.0, 555.0)),
+        green_mat,
+    );
+    scene.put(
+        Collider::from(box_rect)
+            .rotate(Quaternion::axis_angle(
+                Vec3::up(),
+                -std::f32::consts::FRAC_PI_2,
+            ))
+            .translate(0.5 * Vec3::new(-555.0, 555.0, 555.0)),
+        red_mat,
+    );
+    scene.put(
+        create_box(Vec3::new(82.5, 82.5, 82.5))
+            .rotate(Quaternion::axis_angle(Vec3::up(), 18.0f32.to_radians()))
+            .translate(Vec3::new(65.5, 82.5, 147.5)),
+        white_mat,
+    );
+    scene.put(
+        create_box(Vec3::new(82.5, 165.0, 82.5))
+            .rotate(Quaternion::axis_angle(Vec3::up(), -15.0f32.to_radians()))
+            .translate(Vec3::new(-72.5, 165.0, 377.5)),
+        white_mat,
+    );
+
+    // Compute a vfov which covers the entire entry to the box.
+    let half_height = 275.0f32 / 500.0;
     let half_theta = half_height.atan();
     let vfov = half_theta * 2.0 * 180.0 / std::f32::consts::PI;
 
@@ -695,7 +792,8 @@ arg_enum!{
     enum ChoosenScene {
         MaterialTest,
         Cornell,
-        CornellHaze
+        CornellHaze,
+        CornellProjectiveSpace
     }
 }
 
@@ -711,7 +809,9 @@ struct Options {
     #[structopt(short, long, default_value = "output/test.png")]
     out_file: std::path::PathBuf,
     #[structopt(long, default_value = "MaterialTest")]
-    scene: ChoosenScene
+    scene: ChoosenScene,
+    #[structopt(short, long)]
+    update: Option<u32>
 }
 
 fn main() {
@@ -725,7 +825,8 @@ fn main() {
     let (mut scene, camera) = match options.scene {
         ChoosenScene::MaterialTest => test_textures_scene(aspect),
         ChoosenScene::Cornell => cornell_box(aspect),
-        ChoosenScene::CornellHaze => cornell_box_with_haze(aspect)
+        ChoosenScene::CornellHaze => cornell_box_with_haze(aspect),
+        ChoosenScene::CornellProjectiveSpace => cornell_projective_space(aspect),
     };
     scene.compute_hierarchy(0.0, delta_time);
     if let &Some(ref hierarchy) = &scene.hierarchy {
@@ -755,6 +856,18 @@ fn main() {
         .progress_chars("#>-");
     progress_bar.set_style(sty);
 
+    // {
+    //     let ray = camera.world_ray(180.0 / options.width as f32, 280.0 / options.height as f32);
+    //     if let Some((hit, material)) = scene.cast(&ray, MIN_TIME, MAX_TIME) {
+    //         println!("Ray: {:?}", ray);
+    //         println!("Hit: {}", hit);
+    //         println!("Material: {:?}", material);
+    //     }
+    //     if true {
+    //         return;
+    //     }
+    // }
+
     for x in 0..options.width {
         for y in 0..options.height {
             let mut color_accumulator = Color::new(0.0, 0.0, 0.0);
@@ -771,6 +884,13 @@ fn main() {
             color_accumulator /= options.samples as f32;
             let out_color = color_accumulator.gamma2_correct();
             tmp_image.put_pixel(x, y, out_color.into());
+        }
+        if let Some(rows_to_update) = options.update {
+            if x % rows_to_update == 0 {
+                tmp_image
+                    .save(options.out_file.clone())
+                    .expect("Failed to save image.");
+            }
         }
     }
     progress_bar.finish_with_message("done!");
