@@ -1,13 +1,13 @@
 use crate::math::geometry::aabb::AABBGeometry;
 use crate::math::ray::{Ray, RayCollidable, RayHit};
 
-use rand::{Rng, thread_rng};
 use rand::distributions::Uniform;
-use rand_distr::{UnitSphere, Distribution};
+use rand::{thread_rng, Rng};
+use rand_distr::{Distribution, UnitSphere};
 
 pub struct ConstantVolume {
     pub boundary: Box<dyn RayCollidable>,
-    pub density: f32
+    pub density: f32,
 }
 
 impl RayCollidable for ConstantVolume {
@@ -35,7 +35,10 @@ impl RayCollidable for ConstantVolume {
                 let t_exit = exit_hit.hit_fraction.min(t_max);
                 if debug_output {
                     println!("Point in volume!");
-                    println!("Enter/Exit = {}/{}", enter_hit.hit_fraction, exit_hit.hit_fraction);
+                    println!(
+                        "Enter/Exit = {}/{}",
+                        enter_hit.hit_fraction, exit_hit.hit_fraction
+                    );
                     println!("t_enter/t_exit = {}/{}", t_enter, t_exit);
                 }
                 if t_enter >= t_exit {
@@ -49,19 +52,19 @@ impl RayCollidable for ConstantVolume {
                 let hit_distance = -(1.0 / self.density) * rng.sample(between).ln();
                 if hit_distance <= distance_in_boundary {
                     let hit_time = t_enter + hit_distance / direction_length;
-                    let ray_hit = RayHit{
+                    let ray_hit = RayHit {
                         hit_fraction: hit_time,
                         location: ray.point_at_parameter(hit_time),
                         normal: UnitSphere.sample(&mut rng).into(),
                         u: 0.5 * (enter_hit.u + exit_hit.u),
-                        v: 0.5 * (enter_hit.v + exit_hit.v)
+                        v: 0.5 * (enter_hit.v + exit_hit.v),
                     };
                     if debug_output {
                         println!("Hit Distance: {} / {}", hit_distance, distance_in_boundary);
                         println!("Hit: {}\n", &ray_hit);
                     }
                     return Some(ray_hit);
-                    // return Some(ray_hit);
+                // return Some(ray_hit);
                 } else if debug_output {
                     println!("Hit Distance: {} / {}", hit_distance, distance_in_boundary);
                     println!("NO HIT==============\n");

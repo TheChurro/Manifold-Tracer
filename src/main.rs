@@ -393,9 +393,7 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
         albedo: earth_tex,
         fuzziness: 1.0,
     };
-    let smoke_material = Material::Isotropic {
-        albedo: white_tex,
-    };
+    let smoke_material = Material::Isotropic { albedo: white_tex };
 
     scene.put(
         test_sphere.offset(Vec3::new(2.0, 1.0, 2.0)).into(),
@@ -405,13 +403,9 @@ fn test_textures_scene(aspect: f32) -> (Scene, Camera) {
         test_sphere.offset(Vec3::new(0.0, 3.0, 2.0)).into(),
         checker_material,
     );
+    scene.put(Collider::from(gas_sphere).to_volume(0.25), smoke_material);
     scene.put(
-        Collider::from(gas_sphere).to_volume(0.25),
-        smoke_material,
-    );
-    scene.put(
-        Collider::from(test_sphere)
-            .translate(Vec3::new(-2.0, 1.0, 2.0)),
+        Collider::from(test_sphere).translate(Vec3::new(-2.0, 1.0, 2.0)),
         earth_material,
     );
     //scene.put(mirror_sphere.into(), mirror_material);
@@ -593,8 +587,12 @@ fn cornell_box_with_haze(aspect: f32) -> (Scene, Camera) {
 
     let pure_white_tex = scene.add_texture(Texture::Constant(Color::new(1.0, 1.0, 1.0)));
     let pure_black_tex = scene.add_texture(Texture::Constant(Color::zero()));
-    let white_smoke_mat = Material::Isotropic { albedo: pure_white_tex };
-    let black_smoke_mat = Material::Isotropic { albedo: pure_black_tex };
+    let white_smoke_mat = Material::Isotropic {
+        albedo: pure_white_tex,
+    };
+    let black_smoke_mat = Material::Isotropic {
+        albedo: pure_black_tex,
+    };
 
     let box_rect = RectGeometry::new(Vec3::zero(), 555.5, 555.5);
     let light_rect = RectGeometry::new(Vec3::zero(), 300.0, 300.0);
@@ -683,10 +681,10 @@ fn cornell_box_with_haze(aspect: f32) -> (Scene, Camera) {
 }
 
 #[allow(dead_code)]
-fn cornell_projective_space(aspect: f32) -> (Scene, Camera) {
+fn cornell_projective_space(aspect: f32, use_sphere: bool) -> (Scene, Camera) {
     let mut scene = Scene::new();
-    let camera_pos = Vec3::new(0.0, 275.0, -500.0);
-    let scene_center = Vec3::new(0.0, 275.0, 0.0);
+    let camera_pos = Vec3::new(0.0, 0.0, -1.5);
+    let scene_center = Vec3::new(0.0, 0.0, 0.0);
 
     let red_tex = scene.add_texture(Texture::Constant(Color::new(0.65, 0.05, 0.05)));
     let white_tex = scene.add_texture(Texture::Constant(Color::new(0.73, 0.73, 0.73)));
@@ -698,26 +696,36 @@ fn cornell_projective_space(aspect: f32) -> (Scene, Camera) {
     let green_mat = Material::Lambertian { albedo: green_tex };
     let light_mat = Material::Emissive {
         texture: light_tex,
-        amplify: 15.0,
+        amplify: 1.0,
     };
 
-    let box_rect = RectGeometry::new(Vec3::zero(), 200.0, 200.0);
-    let light_rect = RectGeometry::new(Vec3::zero(), 100.0, 100.0);
-    let projective_sphere = SphereGeometry::new(Vec3::zero(), -800.0);
+    let box_rect = RectGeometry::new(Vec3::zero(), 1.0, 2.0);
+    let projective_sphere = SphereGeometry::new(Vec3::zero(), 2.0);
+    //let light_sphere = SphereGeometry::new(Vec3::zero(), 0.25);
 
-    scene.put(projective_sphere.into(), green_mat);
-    scene.put(
-        Collider::from(box_rect).translate(555.0 * 0.5 * Vec3::up() + 555.0 * Vec3::forward()),
-        white_mat,
-    );
+    if true {
+        scene.put(
+            if use_sphere {
+                projective_sphere.into()
+            } else {
+                create_box(Vec3::all(2.0))
+            },
+            Material::DirectionCollapse,
+        );
+    }
+    //scene.put(light_sphere.into(), light_mat);
+    // scene.put(
+    //     Collider::from(box_rect).translate(Vec3::forward()),
+    //     white_mat,
+    // );
     scene.put(
         Collider::from(box_rect)
             .rotate(Quaternion::axis_angle(
                 Vec3::right(),
                 std::f32::consts::FRAC_PI_2,
             ))
-            .translate(555.0 * 0.5 * Vec3::forward()),
-        white_mat,
+            .translate(-Vec3::up()),
+        light_mat,
     );
     scene.put(
         Collider::from(box_rect)
@@ -725,17 +733,8 @@ fn cornell_projective_space(aspect: f32) -> (Scene, Camera) {
                 Vec3::right(),
                 -std::f32::consts::FRAC_PI_2,
             ))
-            .translate(555.0 * Vec3::up() + 555.0 * 0.5 * Vec3::forward()),
+            .translate(Vec3::up()),
         white_mat,
-    );
-    scene.put(
-        Collider::from(light_rect)
-            .rotate(Quaternion::axis_angle(
-                Vec3::right(),
-                -std::f32::consts::FRAC_PI_2,
-            ))
-            .translate(554.5 * Vec3::up() + 555.0 * 0.5 * Vec3::forward()),
-        light_mat,
     );
     scene.put(
         Collider::from(box_rect)
@@ -743,7 +742,7 @@ fn cornell_projective_space(aspect: f32) -> (Scene, Camera) {
                 Vec3::up(),
                 std::f32::consts::FRAC_PI_2,
             ))
-            .translate(0.5 * Vec3::new(555.0, 555.0, 555.0)),
+            .translate(Vec3::right()),
         green_mat,
     );
     scene.put(
@@ -752,24 +751,24 @@ fn cornell_projective_space(aspect: f32) -> (Scene, Camera) {
                 Vec3::up(),
                 -std::f32::consts::FRAC_PI_2,
             ))
-            .translate(0.5 * Vec3::new(-555.0, 555.0, 555.0)),
+            .translate(-Vec3::right()),
         red_mat,
     );
-    scene.put(
-        create_box(Vec3::new(82.5, 82.5, 82.5))
-            .rotate(Quaternion::axis_angle(Vec3::up(), 18.0f32.to_radians()))
-            .translate(Vec3::new(65.5, 82.5, 147.5)),
-        white_mat,
-    );
-    scene.put(
-        create_box(Vec3::new(82.5, 165.0, 82.5))
-            .rotate(Quaternion::axis_angle(Vec3::up(), -15.0f32.to_radians()))
-            .translate(Vec3::new(-72.5, 165.0, 377.5)),
-        white_mat,
-    );
+    // scene.put(
+    //     create_box(Vec3::new(0.3, 0.3, 0.3))
+    //         .rotate(Quaternion::axis_angle(Vec3::right(), 45.0f32.to_radians()))
+    //         .translate(Vec3::new(0.5, -0.3, 0.5)),
+    //     red_mat,
+    // );
+    // scene.put(
+    //     create_box(Vec3::new(0.2, 0.2, 0.2))
+    //         .rotate(Quaternion::axis_angle(Vec3::up(), -15.0f32.to_radians()))
+    //         .translate(Vec3::new(-0.3, 0.3, -0.5)),
+    //     green_mat,
+    // );
 
     // Compute a vfov which covers the entire entry to the box.
-    let half_height = 275.0f32 / 500.0;
+    let half_height = 1.0f32;
     let half_theta = half_height.atan();
     let vfov = half_theta * 2.0 * 180.0 / std::f32::consts::PI;
 
@@ -787,7 +786,7 @@ fn cornell_projective_space(aspect: f32) -> (Scene, Camera) {
     )
 }
 
-arg_enum!{
+arg_enum! {
     #[derive(Debug)]
     enum ChoosenScene {
         MaterialTest,
@@ -811,7 +810,7 @@ struct Options {
     #[structopt(long, default_value = "MaterialTest")]
     scene: ChoosenScene,
     #[structopt(short, long)]
-    update: Option<u32>
+    update: Option<u32>,
 }
 
 fn main() {
@@ -826,7 +825,7 @@ fn main() {
         ChoosenScene::MaterialTest => test_textures_scene(aspect),
         ChoosenScene::Cornell => cornell_box(aspect),
         ChoosenScene::CornellHaze => cornell_box_with_haze(aspect),
-        ChoosenScene::CornellProjectiveSpace => cornell_projective_space(aspect),
+        ChoosenScene::CornellProjectiveSpace => cornell_projective_space(aspect, true),
     };
     scene.compute_hierarchy(0.0, delta_time);
     if let &Some(ref hierarchy) = &scene.hierarchy {

@@ -143,9 +143,9 @@ impl Collider {
     }
 
     pub fn to_volume(self, density: f32) -> Collider {
-        Collider::Volume(ConstantVolume{
+        Collider::Volume(ConstantVolume {
             boundary: Box::new(self),
-            density: density
+            density: density,
         })
     }
 }

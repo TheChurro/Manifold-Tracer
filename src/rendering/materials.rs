@@ -1,8 +1,9 @@
 use rand::distributions::Uniform;
 use rand::Rng;
-use rand_distr::{Distribution, UnitSphere, UnitBall};
+use rand_distr::{Distribution, UnitBall, UnitSphere};
 
 use crate::math::colors::Color;
+use crate::math::quaternion::Quaternion;
 use crate::math::ray::{Ray, RayHit};
 use crate::math::vectors::Vec3;
 
@@ -25,9 +26,10 @@ pub enum Material {
         amplify: f32,
     },
     Isotropic {
-        albedo: TextureIndex
+        albedo: TextureIndex,
     },
-    Projective
+    Projective,
+    DirectionCollapse
 }
 
 pub fn reflect(target: Vec3, normal: Vec3) -> Vec3 {
@@ -118,7 +120,17 @@ impl Material {
             }
             &Projective => {
                 *attenuation = Color::new(1.0, 1.0, 1.0);
-                Some(Ray::new(-hit.location, ray.direction))
+                Some(Ray::new(
+                    -hit.location,
+                    Quaternion::axis_angle(hit.normal, std::f32::consts::PI) * ray.direction,
+                ))
+            }
+            &DirectionCollapse => {
+                *attenuation = Color::new(1.0, 1.0, 1.0);
+                Some(Ray::new(
+                    -hit.location.length() * ray.direction,
+                    ray.direction,
+                ))
             }
         }
     }

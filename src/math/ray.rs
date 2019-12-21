@@ -49,7 +49,11 @@ pub struct RayHit {
 use std::fmt;
 impl fmt::Display for RayHit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "RayHit {{ location: {} | normal: {} | uv: ({}, {}) }} at {}", self.location, self.normal, self.u, self.v, self.hit_fraction)
+        write!(
+            f,
+            "RayHit {{ location: {} | normal: {} | uv: ({}, {}) }} at {}",
+            self.location, self.normal, self.u, self.v, self.hit_fraction
+        )
     }
 }
 
