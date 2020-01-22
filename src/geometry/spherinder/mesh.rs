@@ -30,7 +30,7 @@ impl<T> OffsetMesh<T> {
             SpherinderGeodesic<P>,
             SpherinderGeodesicSegment<P>,
         >,
-        T: SquaredNorm,
+        T: SquaredNorm + Clone + Copy,
         P: Clone + Copy
     {
         self.scaled_base_at(base, 1.0)
