@@ -59,7 +59,7 @@ impl Triangle<OrientedSpherePoint, Vector2<f32>> {
     }
 }
 
-pub trait Triangulable<P, T> : Sized {
+pub trait Triangulable<P, T>: Sized {
     fn triangle(self, b: Self, c: Self) -> Triangle<P, T>;
     fn triangle_new(&self, b: &Self, c: &Self) -> Triangle<P, T>;
 }

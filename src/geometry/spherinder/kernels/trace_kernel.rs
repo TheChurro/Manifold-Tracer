@@ -1,8 +1,8 @@
 use super::open_cl_kernels::TRACE_KERNEL;
 use crate::geometry::sphere::OntoSphere;
-use crate::geometry::spherinder::spaces::SpherinderPoint;
 use crate::geometry::spherinder::mesh::{Mesh, MeshTriangle};
-use crate::geometry::spherinder::triangle::{Triangulable};
+use crate::geometry::spherinder::spaces::SpherinderPoint;
+use crate::geometry::spherinder::triangle::Triangulable;
 use std::fmt::{Display, Error as FormatError, Formatter};
 
 use ocl::error::{Error as OclError, Result as OclResult};
@@ -129,7 +129,10 @@ impl TraceKernelBuilder {
     pub fn load_mesh<P: OntoSphere, T>(
         &mut self,
         mesh: &Mesh<P>,
-    ) -> Result<(), TraceKernelBuildError> where SpherinderPoint<P> : Triangulable<P, T> {
+    ) -> Result<(), TraceKernelBuildError>
+    where
+        SpherinderPoint<P>: Triangulable<P, T>,
+    {
         let min_index = self.verticies.len();
         let mut new_verticies = Vec::new();
         for vertex in &mesh.geometry.points {
@@ -157,8 +160,7 @@ impl TraceKernelBuilder {
             } else {
                 None
             };
-            if let Some(vertex) = oob_vertex
-            {
+            if let Some(vertex) = oob_vertex {
                 return Err(TraceKernelBuildError::TriangleVertexOOB {
                     vertex: vertex,
                     min: min_index,
@@ -167,10 +169,9 @@ impl TraceKernelBuilder {
                 });
             }
             new_triangles.push(Uint4::new(v0_adj as u32, v1_adj as u32, v2_adj as u32, 0));
-            let normal = mesh.geometry.points[*v0].triangle_new(
-                &mesh.geometry.points[*v1],
-                &mesh.geometry.points[*v2],
-            ).normal;
+            let normal = mesh.geometry.points[*v0]
+                .triangle_new(&mesh.geometry.points[*v1], &mesh.geometry.points[*v2])
+                .normal;
             new_normals.push(normal);
         }
         Ok(())
