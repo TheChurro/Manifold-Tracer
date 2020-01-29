@@ -19,3 +19,5 @@ nalgebra = "0.18.0"
 wavefront_obj = "7.0.0"
 image = "0.22.3"
 ocl = "0.19"
+
+piston_window = "0.105.0"

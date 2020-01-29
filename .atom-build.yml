@@ -1,5 +1,5 @@
 name: Build
-cmd: cargo build
+cmd: cargo build --release
 sh: true
 targets:
   format:
@@ -8,5 +8,5 @@ targets:
     keymap: alt-cmd-f
   run:
     sh:  true
-    cmd: cargo run --release
+    cmd: cargo run --bin main --release
     keymap: alt-cmd-r
