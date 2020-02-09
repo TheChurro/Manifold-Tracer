@@ -1,24 +1,35 @@
 #define EPSILON 0.000001f
 #define TRIANGLE 0
 #define BALL 1
+#define NONE 2
 
 __kernel void trace(
-  write_only image2d_t out_image,
-  __global const float4* origins,
-  __global const float4* tangents,
+  __global float4* ray_origin_in,
+  __global float4* ray_tangent_in,
+  __global float4* ray_color_in,
+  __global uint4*  ray_info_in,
+  __private const int rays_in,
+
+  __global float4* ray_origin_out,
+  __global float4* ray_tangent_out,
+  __global float4* ray_color_out,
+  __global uint4*  ray_info_out,
+  __global float4* hit_normals,
+
   __global const float4* edge_ab_normals,
   __global const float4* edge_bc_normals,
   __global const float4* edge_ca_normals,
   __global const float4* normals,
   __private const int num_triangles,
+
   __global const float4* ball_centers,
   __global const float*  ball_radii,
   __private const int num_balls
 ) {
-  uint global_address = get_global_id(1) + get_global_id(0) * get_global_size(1);
-  float4 origin = origins[global_address];
-  float4 tangent = tangents[global_address];
-  int2 pixel = (int2)(get_global_id(0), get_global_id(1));
+  uint global_address = get_global_id(0);
+  if (global_address >= (uint)rays_in) return;
+  float4 origin = ray_origin_in[global_address];
+  float4 tangent = ray_tangent_in[global_address];
   float hit_angle = 4 * M_PI_F;
   float4 hit_normal = (float4)(0, 0, 0, 0);
   bool was_hit = false;
@@ -122,21 +133,12 @@ __kernel void trace(
   }
 
   if (was_hit) {
-    float3 color_mask = (float3)(
-      (hit_index % 2) == 0 ? 1.0 : (hit_type == TRIANGLE ? 0.5 : 0.25),
-      (hit_index % 4)  < 2 ? 1.0 : (hit_type == TRIANGLE ? 0.5 : 0.25),
-      (hit_index % 8)  < 4 ? 1.0 : (hit_type == TRIANGLE ? 0.5 : 0.25)
-    );
-    write_imagef(
-      out_image,
-      pixel,
-      (float4)(color_mask, 1.0f)
-    );
+    hit_normals[global_address] = hit_normal;
+    ray_origin_out[global_address] = origin * cos(hit_angle) + tangent * sin(hit_angle);
+    ray_tangent_out[global_address] = origin * cos(hit_angle + M_PI_F / 2) + tangent * sin(hit_angle + M_PI_F / 2);
+    ray_color_out[global_address] = ray_color_in[global_address];
+    ray_info_out[global_address] = (uint4)(hit_type, hit_index, ray_info_in[global_address].zw);
   } else {
-    write_imagef(
-      out_image,
-      pixel,
-      (float4)(0.0f, 0.0f, 0.0f, 1.0f)
-    );
+    ray_info_out[global_address] = (uint4)(NONE, NONE, ray_info_in[global_address].zw);
   }
 }

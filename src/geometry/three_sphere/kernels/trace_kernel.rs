@@ -1,19 +1,14 @@
 use super::open_cl_kernels::TRACE_KERNEL;
+use super::wavefront::InOutBufferSet;
 use crate::geometry::three_sphere::*;
+
 use std::fmt::{Display, Error as FormatError, Formatter};
 
 use ocl::error::{Error as OclError, Result as OclResult};
-use ocl::{
-    enums::{ImageChannelDataType, ImageChannelOrder, MemObjectType},
-    flags::{MEM_HOST_READ_ONLY, MEM_WRITE_ONLY},
-    Image, SpatialDims,
-};
 use ocl::{prm::Float4, Buffer};
 use ocl::{Context, Device, Kernel, Program, Queue};
 
 use std::ffi::CString;
-
-use image::RgbaImage;
 
 impl From<Point> for Float4 {
     fn from(p: Point) -> Float4 {
@@ -29,9 +24,6 @@ impl From<&Point> for Float4 {
 
 pub struct TraceKernel {
     pub kernel: Kernel,
-    pub output_image: Image<u8>,
-    pub origins_buffer: Buffer<Float4>,
-    pub tangents_buffer: Buffer<Float4>,
     pub edge_ab_normals_buffer: Buffer<Float4>,
     pub edge_bc_normals_buffer: Buffer<Float4>,
     pub edge_ca_normals_buffer: Buffer<Float4>,
@@ -52,8 +44,6 @@ impl TraceKernel {
         )?;
         Ok(TraceKernelBuilder {
             kernel_program: program,
-            num_rays: None,
-            dims: None,
             edge_ab_normals: Vec::new(),
             edge_bc_normals: Vec::new(),
             edge_ca_normals: Vec::new(),
@@ -63,25 +53,16 @@ impl TraceKernel {
         })
     }
 
-    pub fn trace(&self, rays: &Vec<(Point, Point)>, img: &mut RgbaImage) -> OclResult<()> {
-        let mut origins: Vec<Float4> = Vec::new();
-        let mut tangents: Vec<Float4> = Vec::new();
-        for ray in rays {
-            origins.push(ray.0.into());
-            tangents.push(ray.1.into());
-        }
-        self.origins_buffer.write(&origins).enq()?;
-        self.tangents_buffer.write(&tangents).enq()?;
+    pub fn run(&mut self, num_rays: u32) -> Result<(), ocl::Error> {
+        // Update how many rays we are sending into the scene
+        self.kernel.set_arg(4, &num_rays)?;
         unsafe { self.kernel.enq()? };
-        self.output_image.read(img).enq()?;
         Ok(())
     }
 }
 
 pub struct TraceKernelBuilder {
     pub kernel_program: Program,
-    pub num_rays: Option<u32>,
-    pub dims: Option<SpatialDims>,
     pub edge_ab_normals: Vec<Float4>,
     pub edge_bc_normals: Vec<Float4>,
     pub edge_ca_normals: Vec<Float4>,
@@ -92,8 +73,6 @@ pub struct TraceKernelBuilder {
 
 #[derive(Clone, Copy, Debug)]
 pub enum TraceKernelBufferID {
-    OriginsBuffer,
-    TangentsBuffer,
     EdgeABNormalsBuffer,
     EdgeBCNormalsBuffer,
     EdgeCANormalsBuffer,
@@ -148,16 +127,6 @@ fn build_and_load_buffer<T: ocl::OclPrm>(
 }
 
 impl TraceKernelBuilder {
-    pub fn with_rays(mut self, num_rays: u32) -> Self {
-        self.num_rays = Some(num_rays);
-        self
-    }
-
-    pub fn with_dims(mut self, width: u32, height: u32) -> Self {
-        self.dims = Some((width, height).into());
-        self
-    }
-
     pub fn load_triangle(&mut self, tri: &Triangle) {
         self.edge_ab_normals.push(tri.edge_normals[0].into());
         self.edge_bc_normals.push(tri.edge_normals[1].into());
@@ -165,43 +134,19 @@ impl TraceKernelBuilder {
         self.normals.push(tri.triangle_normal.into());
     }
 
-    pub fn load_ball(&mut self, center: &Point, radius: f32) {
-        self.ball_centers.push(center.into());
-        self.ball_radii.push(radius);
+    pub fn load_ball(&mut self, ball: &Ball) {
+        self.ball_centers.push(ball.center.into());
+        self.ball_radii.push(ball.radius);
     }
 
-    pub fn build(&self, queue: &Queue) -> Result<TraceKernel, TraceKernelBuildError> {
+    pub fn build(
+        &self,
+        num_rays: u32,
+        queue: &Queue,
+        in_out_buffers: &InOutBufferSet,
+    ) -> Result<TraceKernel, TraceKernelBuildError> {
         use TraceKernelBufferID::*;
         use TraceKernelBuildError::*;
-        let num_rays = match self.num_rays {
-            Some(num_rays) => num_rays,
-            None => return Err(NoNumberOfRaysSet),
-        };
-        let dims = match self.dims {
-            Some(dims) => dims,
-            None => return Err(NoDimsSet),
-        };
-        let output_image = match Image::<u8>::builder()
-            .dims(dims)
-            .channel_order(ImageChannelOrder::Rgba)
-            .channel_data_type(ImageChannelDataType::UnormInt8)
-            .image_type(MemObjectType::Image2d)
-            .dims(&dims)
-            .flags(MEM_WRITE_ONLY | MEM_HOST_READ_ONLY)
-            .queue(queue.clone())
-            .build()
-        {
-            Ok(img) => img,
-            Err(e) => return Err(ImageBuildError(e)),
-        };
-        let origins_buffer = match Buffer::builder().len(num_rays).queue(queue.clone()).build() {
-            Ok(buffer) => buffer,
-            Err(e) => return Err(BufferBuildError(OriginsBuffer, e)),
-        };
-        let tangents_buffer = match Buffer::builder().len(num_rays).queue(queue.clone()).build() {
-            Ok(buffer) => buffer,
-            Err(e) => return Err(BufferBuildError(TangentsBuffer, e)),
-        };
         let edge_ab_normals_buffer =
             build_and_load_buffer(&self.edge_ab_normals, EdgeABNormalsBuffer, queue)?;
         let edge_bc_normals_buffer =
@@ -215,10 +160,17 @@ impl TraceKernelBuilder {
         match Kernel::builder()
             .program(&self.kernel_program)
             .name("trace")
-            .global_work_size(dims)
-            .arg(&output_image)
-            .arg(&origins_buffer)
-            .arg(&tangents_buffer)
+            .global_work_size(num_rays)
+            .arg(&in_out_buffers.trace_ray_origin)
+            .arg(&in_out_buffers.trace_ray_tangent)
+            .arg(&in_out_buffers.trace_ray_color)
+            .arg(&in_out_buffers.trace_ray_info)
+            .arg(&0)
+            .arg(&in_out_buffers.shade_ray_origin)
+            .arg(&in_out_buffers.shade_ray_tangent)
+            .arg(&in_out_buffers.shade_ray_color)
+            .arg(&in_out_buffers.shade_ray_info)
+            .arg(&in_out_buffers.hit_normal)
             .arg(&edge_ab_normals_buffer)
             .arg(&edge_bc_normals_buffer)
             .arg(&edge_ca_normals_buffer)
@@ -232,9 +184,6 @@ impl TraceKernelBuilder {
         {
             Ok(kernel) => Ok(TraceKernel {
                 kernel: kernel,
-                output_image: output_image,
-                origins_buffer: origins_buffer,
-                tangents_buffer: tangents_buffer,
                 edge_ab_normals_buffer: edge_ab_normals_buffer,
                 edge_bc_normals_buffer: edge_bc_normals_buffer,
                 edge_ca_normals_buffer: edge_ca_normals_buffer,

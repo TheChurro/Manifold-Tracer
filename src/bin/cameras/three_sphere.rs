@@ -1,6 +1,8 @@
 use image::RgbaImage;
 use manifold_tracer::geometry::three_sphere::{Direction, Orientation, Point};
 
+use rand::{distributions::Distribution, distributions::Uniform, thread_rng};
+
 pub struct CameraS3 {
     pub vfov: f32,
     pub aspect: f32,
@@ -12,7 +14,7 @@ pub struct CameraS3 {
 }
 
 impl CameraS3 {
-    pub fn new(vfov: f32, width: u32, height: u32) -> CameraS3 {
+    pub fn new(vfov: f32, width: u32, height: u32, num_samples: u32) -> CameraS3 {
         let img = RgbaImage::new(width, height);
         CameraS3 {
             vfov: vfov,
@@ -20,7 +22,7 @@ impl CameraS3 {
             orientation: Orientation::identity(),
             theta: 0.0,
             azimuth: 0.0,
-            samples: 1,
+            samples: num_samples,
             image: img,
         }
     }
@@ -28,9 +30,6 @@ impl CameraS3 {
         let azimuth = Orientation::rotate_towards(Direction::i(), 0.0, self.azimuth);
         let planar = Orientation::rotate_towards(Direction::j(), 0.0, self.theta);
         planar * azimuth
-    }
-    pub fn get_num_rays(&self) -> u32 {
-        self.image.width() * self.image.height() * self.samples
     }
     pub fn generate_rays_frustrum(&self) -> Vec<(Point, Point)> {
         let mut rays = Vec::new();
@@ -44,13 +43,21 @@ impl CameraS3 {
         let origin = rot * Point::one();
         let center_x = self.image.width() as f32 / 2.0;
         let center_y = self.image.height() as f32 / 2.0;
+        let mut rng = thread_rng();
+        let distro = Uniform::new_inclusive(0.0, 1.0);
         for x in 0..self.image.width() {
             let x_factor = x as f32 - center_x;
             for y in 0..self.image.height() {
                 let y_factor = center_y - y as f32;
-                let tangent = Point::in_direction(x_factor * right + y_factor * up + forwards)
+                for _ in 0..self.samples {
+                    let x_jitter = distro.sample(&mut rng);
+                    let y_jitter = distro.sample(&mut rng);
+                    let tangent = Point::in_direction(
+                        (x_factor + x_jitter) * right + (y_factor + y_jitter) * up + forwards,
+                    )
                     .unwrap_or(forwards_point);
-                rays.push((origin, tangent));
+                    rays.push((origin, tangent));
+                }
             }
         }
         rays

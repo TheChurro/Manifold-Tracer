@@ -57,3 +57,17 @@ impl Triangle {
         })
     }
 }
+
+pub struct Ball {
+    pub center: Point,
+    pub radius: f32,
+}
+
+impl Ball {
+    pub fn new(center: Point, radius: f32) -> Ball {
+        Ball {
+            center: center,
+            radius: radius,
+        }
+    }
+}

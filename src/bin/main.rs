@@ -42,47 +42,10 @@ struct Options {
     update: Option<u32>,
 }
 
-use manifold_tracer::geometry::three_sphere::kernels::trace_kernel::TraceKernel;
-fn build_kernel(num_rays: u32, width: u32, height: u32) -> TraceKernel {
-    use manifold_tracer::geometry::three_sphere::kernels::trace_kernel::*;
+use manifold_tracer::geometry::three_sphere::kernels::wavefront::Wavefront;
+fn build_kernel(width: u32, height: u32, num_samples: u32) -> Wavefront {
     use manifold_tracer::geometry::three_sphere::*;
-    use ocl::enums::DeviceSpecifier;
-    use ocl::{Context, DeviceType, Platform, Queue};
-    // Grab the first GPU from the device list.
-    let device = {
-        match DeviceSpecifier::from(DeviceType::GPU).to_device_list(Some(Platform::default())) {
-            Ok(devices) => {
-                if devices.len() == 0 {
-                    panic!("No GPU devices found!");
-                }
-                if devices.len() > 0 {
-                    println!("Found multiple GPUs! Defaulting to first found!");
-                }
-                devices[0]
-            }
-            Err(e) => {
-                panic!("Failed to load GPU devices: {}", e);
-            }
-        }
-    };
-    let context = match Context::builder()
-        .platform(Platform::default())
-        .devices(device)
-        .build()
-    {
-        Ok(context) => context,
-        Err(e) => panic!("Failed to create contex: {}", e),
-    };
-    let queue = match Queue::new(&context, device, None) {
-        Ok(queue) => queue,
-        Err(e) => panic!("Failed to create queue: {}", e),
-    };
-    let mut kernel_builder = match TraceKernel::builder(&context, &device) {
-        Ok(builder) => builder,
-        Err(e) => panic!("Failed to create kernel builder: {}", e),
-    }
-    .with_rays(num_rays)
-    .with_dims(width, height);
+    let mut wavefront = Wavefront::new();
     let mut triangles = Vec::new();
     triangles.push(Triangle::new(Point::i(), Point::j(), Point::k()).unwrap());
     triangles.push(Triangle::new(Point::i(), Point::k(), -Point::j()).unwrap());
@@ -92,24 +55,53 @@ fn build_kernel(num_rays: u32, width: u32, height: u32) -> TraceKernel {
     triangles.push(Triangle::new(Point::k(), -Point::i(), -Point::j()).unwrap());
     triangles.push(Triangle::new(-Point::j(), -Point::i(), -Point::k()).unwrap());
     triangles.push(Triangle::new(-Point::k(), -Point::i(), Point::j()).unwrap());
-    for tri in &triangles {
-        kernel_builder.load_triangle(tri);
+    for tri in triangles {
+        wavefront.triangle(tri, [0.75, 0.75, 0.75], MaterialType::Lambertian);
     }
     let mut balls = Vec::new();
-    balls.push((Point::i(), 0.1));
-    balls.push((-Point::i(), 0.1));
-    balls.push((Point::j(), 0.1));
-    balls.push((-Point::j(), 0.1));
-    balls.push((Point::k(), 0.1));
-    balls.push((-Point::k(), 0.1));
-    for (center, radius) in balls {
-        kernel_builder.load_ball(&center, radius);
+    balls.push(Object::new(
+        Ball::new(Point::i(), 0.1),
+        [0.75, 0.25, 0.25],
+        MaterialType::Emissive,
+    ));
+    balls.push(Object::new(
+        Ball::new(-Point::i(), 0.1),
+        [0.25, 0.75, 0.25],
+        MaterialType::Emissive,
+    ));
+    balls.push(Object::new(
+        Ball::new(Point::j(), 0.1),
+        [0.25, 0.25, 0.75],
+        MaterialType::Emissive,
+    ));
+    balls.push(Object::new(
+        Ball::new(-Point::j(), 0.1),
+        [0.75, 0.25, 0.75],
+        MaterialType::Emissive,
+    ));
+    balls.push(Object::new(
+        Ball::new(Point::k(), 0.1),
+        [0.75, 0.75, 0.25],
+        MaterialType::Emissive,
+    ));
+    balls.push(Object::new(
+        Ball::new(-Point::k(), 0.1),
+        [0.25, 0.75, 0.75],
+        MaterialType::Emissive,
+    ));
+    // balls.push(Object::new(
+    //     Ball::new(-Point::one(), 0.1),
+    //     [2.0, 2.0, 2.0],
+    //     MaterialType::Emissive,
+    // ));
+    for ball in balls {
+        wavefront.ball(ball.geometry, ball.color, ball.material);
     }
-    let kernel = match kernel_builder.build(&queue) {
-        Ok(kernel) => kernel,
+    match wavefront.build(width, height, num_samples) {
         Err(e) => panic!("Failed to build kernel: {}", e),
+        _ => {}
     };
-    kernel
+    wavefront
 }
 
 use piston_window::{AdvancedWindow, PistonWindow};
@@ -121,7 +113,7 @@ struct App {
     pub texture: G2dTexture,
     pub texture_context: G2dTextureContext,
     pub camera: cameras::CameraS3,
-    pub kernel: TraceKernel,
+    pub kernel: Wavefront,
     pub horiz_speed: f32,
     pub forward_speed: f32,
     pub vert_speed: f32,
@@ -131,7 +123,7 @@ struct App {
 }
 
 impl App {
-    pub fn new(camera: cameras::CameraS3, kernel: TraceKernel) -> App {
+    pub fn new(camera: cameras::CameraS3, kernel: Wavefront) -> App {
         let mut window: PistonWindow = piston_window::WindowSettings::new(
             "Spherical Trace",
             (camera.image.width(), camera.image.height()),
@@ -188,7 +180,7 @@ impl App {
             // Load new camera data and write to texture.
             let rays = camera.generate_rays_frustrum();
             kernel
-                .trace(&rays, &mut camera.image)
+                .run(rays, &mut camera.image)
                 .unwrap_or_else(|e| panic!("Failed to trace: {}", e));
             texture
                 .update(texture_context, &camera.image)
@@ -258,8 +250,8 @@ impl App {
 
 fn main() {
     use cameras::CameraS3;
-    let camera = CameraS3::new(std::f32::consts::PI, 512, 512);
-    let kernel = build_kernel(camera.get_num_rays(), 512, 512);
+    let camera = CameraS3::new(std::f32::consts::PI, 256, 256, 10);
+    let kernel = build_kernel(256, 256, 10);
 
     let mut app = App::new(camera, kernel);
     app.run();

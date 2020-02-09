@@ -6,10 +6,22 @@
 
 // According to recommendations from Parker and Miller
 // http://www0.cs.ucl.ac.uk/staff/ucacbbl/ftp/papers/langdon_2009_CIGPU.pdf
+uint rand_int(uint* seed);
+float rand_float(uint* seed);
+float3 rand_hemisphere(uint* seed);
+float det(float3 r0, float3 r1, float3 r2);
+float4 cross_three(float4 a, float4 b, float4 c);
+void get_basis(
+  float4 point,
+  float4 normal,
+  float4* out_left,
+  float4* out_forwards
+);
+
 uint rand_int(uint* seed) {
   uint const a = 16807; //ie 7**5
   uint const m = 2147483647; //ie 2**31-1
-  *seed = (long(seed * a))%m;
+  *seed = ((long)(*seed * a))%m;
   return *seed;
 }
 
@@ -40,24 +52,19 @@ float4 cross_three(float4 a, float4 b, float4 c) {
   return (float4)(-x, y, -z, w);
 }
 
-void get_basis(
-  float4 point,
-  float4 normal,
-  float4* out_left,
-  float4* out_forwards
-) {
+void get_basis(float4 point, float4 normal, float4* out_left, float4* out_forwards) {
   for (int i = 0; i < 4; i++) {
     float4 v = (float4)(
       i == 0 ? 1.0 : 0.0,
       i == 1 ? 1.0 : 0.0,
       i == 2 ? 1.0 : 0.0,
-      i == 3 ? 1.0 : 0.0,
+      i == 3 ? 1.0 : 0.0
     );
     float p_dot = dot(v, point);
     float n_dot = dot(v, normal);
     float4 v_perp = v - p_dot * point - n_dot * normal;
     float v_length = length(v_perp);
-    if (left_length > EPSILON) {
+    if (v_length > EPSILON) {
       *out_left = v_perp / v_length;
       break;
     }
@@ -67,22 +74,27 @@ void get_basis(
 }
 
 __kernel void shade(
-  write_only image2d_t out_image,
-  __global  float4* ray_locations,
-  __global  float4* ray_tangents,
-  __global  float4* ray_colors,
-  __global  float4* hit_normal,
-  __global  uint4*  hit_infos,
+  __global float4* sample_color_out,
+  __global float4* ray_origin_in,
+  __global float4* ray_tangent_in,
+  __global float4* ray_color_in,
+  __global uint4*  ray_info_in,
+  __global float4* hit_normal,
   __private const int num_hits_in,
-  __global        int num_rays_out,
+  __global float4* ray_origin_out,
+  __global float4* ray_tangent_out,
+  __global float4* ray_color_out,
+  __global uint4*  ray_info_out,
+  __global int*    rays_out,
   __global const float4* tri_material_colors,
   __global const int*    tri_material_type,
   __global const float4* ball_material_colors,
   __global const int*    ball_material_type
 ) {
-  uint global_address = get_global_id(1) + get_global_id(0) * get_global_size(1);
-  if (global_address >= num_rays_in) return;
-  uint4 hit_info = hit_infos[global_address];
+  uint global_address = get_global_id(0);
+  int step_on = rays_out[1];
+  if (global_address >= (uint)num_hits_in) return;
+  uint4 hit_info = ray_info_in[global_address];
   uint hit_type = hit_info.x;
   uint hit_index = hit_info.y;
   float4 mat_color = (float4)(0);
@@ -98,37 +110,29 @@ __kernel void shade(
       mat_type = ball_material_type[hit_index];
       break;
     default:
-      write_imagef(
-        out_image,
-        hit_info.zw,
-        (float4)(0.0f, 0.0f, 0.0f, 1.0f)
-      );
+      sample_color_out[hit_info.z] = (float4)(0.0f, 0.0f, 0.0f, 1.0f);
       return;
   }
-  float4 ray_color = ray_colors[global_address];
+  float4 ray_color = ray_color_in[global_address];
   // Hit emitter! Change the color
   if (mat_type == EMISSIVE) {
-    write_imagef(
-      out_image,
-      hit_info.zw,
-      (float4)(fmin(ray_color * mat_color, 1.0f), 1.0f)
-    );
+    sample_color_out[hit_info.z] = (float4)(fmin(ray_color.xyz * mat_color.xyz, 1.0f), 1.0f);
     return;
   }
   // Otherwise we hit a lambertian material
-  float4 origin = ray_locations[global_address];
-  float4 tangent = ray_tangents[global_address];
+  float4 origin = ray_origin_in[global_address];
+  float4 tangent = ray_tangent_in[global_address];
   float4 normal = hit_normal[global_address];
   uint seed = global_address ^ as_uint(ray_color.x) ^ as_uint(tangent.y) ^ as_uint(origin.z);
   float3 sampled_point = rand_hemisphere(&seed);
   float4 right;
   float4 forwards;
   get_basis(origin, normal, &right, &forwards);
-  uint new_ray_idx = atomic_add(&num_rays_out, 1);
-  ray_locations[new_ray_idx] = origin;
-  ray_tangents[new_ray_idx] = normal * sampled_point.x
+  uint new_ray_idx = atomic_add(rays_out, 1);
+  ray_origin_out[new_ray_idx] = origin;
+  ray_tangent_out[new_ray_idx] = -normal * sampled_point.x
                              + right * sampled_point.y
                           + forwards * sampled_point.z;
-  ray_colors[new_ray_idx] = mat_color * ray_color;
-  hit_infos[new_ray_idx] = hit_info;
+  ray_color_out[new_ray_idx] = mat_color * ray_color;
+  ray_info_out[new_ray_idx] = hit_info;
 }

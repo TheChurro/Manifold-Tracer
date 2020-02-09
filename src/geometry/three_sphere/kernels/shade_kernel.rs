@@ -1,31 +1,18 @@
 use super::open_cl_kernels::SHADE_KERNEL;
-use crate::geometry::three_sphere::*;
+use super::wavefront::InOutBufferSet;
 use std::fmt::{Display, Error as FormatError, Formatter};
 
 use ocl::error::{Error as OclError, Result as OclResult};
 use ocl::{
-    enums::{ImageChannelDataType, ImageChannelOrder, MemObjectType},
-    flags::{MEM_HOST_READ_ONLY, MEM_WRITE_ONLY},
-    Image, SpatialDims,
-};
-use ocl::{
-    prm::{Float4, Uint4},
+    prm::{Float4},
     Buffer,
 };
 use ocl::{Context, Device, Kernel, Program, Queue};
 
 use std::ffi::CString;
 
-use image::RgbaImage;
-
 pub struct ShadeKernel {
     pub kernel: Kernel,
-    pub output_image: Image<u8>,
-    pub origins_buffer: Buffer<Float4>,
-    pub tangents_buffer: Buffer<Float4>,
-    pub ray_colors_buffer: Buffer<Float4>,
-    pub ray_hit_normals_buffer: Buffer<Float4>,
-    pub ray_hit_infos_buffer: Buffer<Uint4>,
     pub triangle_colors_buffer: Buffer<Float4>,
     pub triangle_mat_types_buffer: Buffer<u32>,
     pub ball_colors_buffer: Buffer<Float4>,
@@ -44,7 +31,6 @@ impl ShadeKernel {
         )?;
         Ok(ShadeKernelBuilder {
             kernel_program: program,
-            image_dims: None,
             triangle_colors: Vec::new(),
             triangle_mat_types: Vec::new(),
             ball_colors: Vec::new(),
@@ -52,22 +38,16 @@ impl ShadeKernel {
         })
     }
 
-    pub fn shade(&mut self, num_rays: u32, img: &mut RgbaImage) -> OclResult<u32> {
-        self.kernel.set_default_global_work_size(num_rays.into());
+    pub fn shade(&mut self, num_rays: u32) -> OclResult<()> {
+        self.kernel.set_arg(6, &num_rays)?;
         unsafe { self.kernel.enq()? };
-        self.output_image.read(img).enq()?;
-        Ok(0)
+        Ok(())
     }
 }
 
-pub enum MaterialType {
-    Lambertian,
-    Emissive,
-}
-
+use crate::geometry::three_sphere::object::MaterialType;
 pub struct ShadeKernelBuilder {
     pub kernel_program: Program,
-    pub image_dims: Option<SpatialDims>,
     pub triangle_colors: Vec<Float4>,
     pub triangle_mat_types: Vec<u32>,
     pub ball_colors: Vec<Float4>,
@@ -129,11 +109,6 @@ fn build_and_load_buffer<T: ocl::OclPrm>(
 }
 
 impl ShadeKernelBuilder {
-    pub fn with_dims(mut self, width: u32, height: u32) -> Self {
-        self.image_dims = Some((width, height).into());
-        self
-    }
-
     pub fn add_triangle_material(&mut self, color: [f32; 3], mat_type: MaterialType) {
         self.triangle_colors
             .push(Float4::new(color[0], color[1], color[2], 1.0));
@@ -154,37 +129,12 @@ impl ShadeKernelBuilder {
 
     pub fn build(
         &self,
-        max_rays: u32,
-        ray_origins_buffer: &Buffer<Float4>,
-        ray_tangents_buffer: &Buffer<Float4>,
-        hit_normals_buffer: &Buffer<Float4>,
-        hit_infos_buffer: &Buffer<Uint4>,
+        num_rays: u32,
+        in_out_buffers: &InOutBufferSet,
         queue: &Queue,
     ) -> Result<ShadeKernel, ShadeKernelBuildError> {
         use ShadeKernelBufferID::*;
         use ShadeKernelBuildError::*;
-        let dims = match self.image_dims {
-            Some(dims) => dims,
-            None => return Err(NoDimsSet),
-        };
-        let output_image = match Image::<u8>::builder()
-            .dims(dims)
-            .channel_order(ImageChannelOrder::Rgba)
-            .channel_data_type(ImageChannelDataType::UnormInt8)
-            .image_type(MemObjectType::Image2d)
-            .dims(&dims)
-            .flags(MEM_WRITE_ONLY | MEM_HOST_READ_ONLY)
-            .queue(queue.clone())
-            .build()
-        {
-            Ok(img) => img,
-            Err(e) => return Err(ImageBuildError(e)),
-        };
-        let mut initial_ray_colors = Vec::new();
-        for _ in 0..max_rays {
-            initial_ray_colors.push(Float4::new(1.0, 1.0, 1.0, 1.0));
-        }
-        let ray_colors_buffer = build_and_load_buffer(&initial_ray_colors, RayColorsBuffer, queue)?;
         let triangle_colors_buffer =
             build_and_load_buffer(&self.triangle_colors, TriangleColorsBuffer, queue)?;
         let triangle_mat_types_buffer =
@@ -195,15 +145,19 @@ impl ShadeKernelBuilder {
         match Kernel::builder()
             .program(&self.kernel_program)
             .name("shade")
-            .global_work_size(max_rays)
-            .arg(&output_image)
-            .arg(ray_origins_buffer)
-            .arg(ray_tangents_buffer)
-            .arg(&ray_colors_buffer)
-            .arg(hit_normals_buffer)
-            .arg(hit_infos_buffer)
-            .arg(&max_rays)
+            .global_work_size(num_rays)
+            .arg(&in_out_buffers.sample_color_out)
+            .arg(&in_out_buffers.shade_ray_origin)
+            .arg(&in_out_buffers.shade_ray_tangent)
+            .arg(&in_out_buffers.shade_ray_color)
+            .arg(&in_out_buffers.shade_ray_info)
+            .arg(&in_out_buffers.hit_normal)
             .arg(&0)
+            .arg(&in_out_buffers.trace_ray_origin)
+            .arg(&in_out_buffers.trace_ray_tangent)
+            .arg(&in_out_buffers.trace_ray_color)
+            .arg(&in_out_buffers.trace_ray_info)
+            .arg(&in_out_buffers.shade_rays_produced)
             .arg(&triangle_colors_buffer)
             .arg(&triangle_mat_types_buffer)
             .arg(&ball_colors_buffer)
@@ -213,12 +167,6 @@ impl ShadeKernelBuilder {
         {
             Ok(kernel) => Ok(ShadeKernel {
                 kernel: kernel,
-                output_image: output_image,
-                origins_buffer: ray_origins_buffer.clone(),
-                tangents_buffer: ray_tangents_buffer.clone(),
-                ray_colors_buffer: ray_colors_buffer,
-                ray_hit_normals_buffer: hit_normals_buffer.clone(),
-                ray_hit_infos_buffer: hit_infos_buffer.clone(),
                 triangle_colors_buffer: triangle_colors_buffer,
                 triangle_mat_types_buffer: triangle_mat_types_buffer,
                 ball_colors_buffer: ball_colors_buffer,
