@@ -15,6 +15,6 @@ __kernel void aggregate(
   write_imagef(
     out_image,
     (int2)(x_pos, y_pos),
-    (float4)(aggregate.xyz / num_samples, 1.0)
+    (float4)(fmin(aggregate.xyz / num_samples, 1.0f), 1.0f)
   );
 }

@@ -1,33 +1,35 @@
 use crate::geometry::three_sphere::orientation::*;
 use crate::geometry::three_sphere::primitives::*;
 use crate::geometry::three_sphere::representation::*;
-use na::Vector3;
 
 pub struct MeshInstance {
     pub triangles: Vec<Triangle>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Offset {
-    tangent: Vector3<f32>,
-    distance: f32,
+    pub tangent: [f32; 3],
+    pub distance: f32,
 }
 
 impl Offset {
     pub fn orient(&self, orientation: &Orientation) -> Point {
         let tangent =
-            orientation * Direction::new(0.0, self.tangent.x, self.tangent.y, self.tangent.z);
+            orientation * Direction::new(0.0, self.tangent[0], self.tangent[1], self.tangent[2]);
         let start = orientation * Direction::new(1.0, 0.0, 0.0, 0.0);
         let oriented_point =
             start.coords * self.distance.cos() + tangent.coords * self.distance.sin();
+        // println!("START: {} | TANGENT: {} | OUT: {}", start, tangent, oriented_point);
         Point::new(
+            oriented_point.w,
             oriented_point.x,
             oriented_point.y,
             oriented_point.z,
-            oriented_point.w,
         )
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct MeshDescription {
     pub triangles: Vec<(usize, usize, usize)>,
     pub verticies_offsets: Vec<Offset>,

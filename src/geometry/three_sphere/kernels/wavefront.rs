@@ -2,8 +2,8 @@ use crate::geometry::three_sphere::kernels::shade_kernel::ShadeKernelBuildError;
 use crate::geometry::three_sphere::kernels::trace_kernel::TraceKernelBuildError;
 use crate::geometry::three_sphere::kernels::{SampleAggregator, ShadeKernel, TraceKernel};
 use crate::geometry::three_sphere::object::MaterialType;
+use crate::geometry::three_sphere::Point;
 use crate::geometry::three_sphere::{Ball, Object, Triangle};
-use crate::geometry::three_sphere::{Point};
 
 use ocl::{enums::DeviceSpecifier, Device, DeviceType};
 use ocl::{Context, Platform, Queue};
@@ -282,6 +282,8 @@ impl Wavefront {
         img: &mut image::RgbaImage,
     ) -> Result<(), ocl::Error> {
         if let &mut Some(ref mut shaders) = &mut self.shaders {
+            use rand::RngCore;
+            let mut rng = rand::thread_rng();
             let mut ray_origins: Vec<Float4> = Vec::new();
             let mut ray_tangents: Vec<Float4> = Vec::new();
             let mut ray_colors: Vec<Float4> = Vec::new();
@@ -290,7 +292,7 @@ impl Wavefront {
                 ray_origins.push(ray.0.into());
                 ray_tangents.push(ray.1.into());
                 ray_colors.push([1.0; 4].into());
-                ray_info.push(Uint4::new(0, 0, i as u32, i as u32));
+                ray_info.push(Uint4::new(0, 0, i as u32, rng.next_u32()));
             }
             shaders
                 .buffer_set

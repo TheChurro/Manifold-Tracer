@@ -1,3 +1,4 @@
+use super::EPSILON;
 use crate::geometry::three_sphere::representation::*;
 
 use na::{Quaternion, UnitQuaternion, Vector3};
@@ -12,6 +13,13 @@ impl Orientation {
     pub fn identity() -> Orientation {
         Orientation {
             left_isoclinic: UnitQuaternion::identity(),
+            right_isoclinic: UnitQuaternion::identity(),
+        }
+    }
+
+    pub fn simple(point: &Point) -> Orientation {
+        Orientation {
+            left_isoclinic: (**point).clone(),
             right_isoclinic: UnitQuaternion::identity(),
         }
     }

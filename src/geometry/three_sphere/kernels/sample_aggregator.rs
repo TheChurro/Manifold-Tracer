@@ -1,7 +1,7 @@
 use super::wavefront::InOutBufferSet;
 use super::AGGREGATE_KERNEL;
 
-use ocl::error::{Error as OclError};
+use ocl::error::Error as OclError;
 use ocl::{
     enums::{ImageChannelDataType, ImageChannelOrder, MemObjectType},
     flags::{MEM_HOST_READ_ONLY, MEM_WRITE_ONLY},

@@ -21,3 +21,6 @@ image = "0.22.3"
 ocl = "0.19"
 
 piston_window = "0.105.0"
+
+serde = { version = "1.0", features = ["derive"] }
+ron = "0.5.1"

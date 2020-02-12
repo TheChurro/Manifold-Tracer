@@ -115,12 +115,13 @@ fn build_and_load_buffer<T: ocl::OclPrm>(
     buffer_id: TraceKernelBufferID,
     queue: &Queue,
 ) -> Result<Buffer<T>, TraceKernelBuildError> {
-    match Buffer::builder()
-        .len(vals.len())
-        .queue(queue.clone())
-        .copy_host_slice(vals)
-        .build()
-    {
+    let mut builder = Buffer::builder()
+        .len(vals.len().max(1))
+        .queue(queue.clone());
+    if vals.len() > 0 {
+        builder = builder.copy_host_slice(vals);
+    }
+    match builder.build() {
         Ok(buffer) => Ok(buffer),
         Err(e) => Err(TraceKernelBuildError::BufferBuildError(buffer_id, e)),
     }

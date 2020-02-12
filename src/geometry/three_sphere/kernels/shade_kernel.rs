@@ -3,10 +3,7 @@ use super::wavefront::InOutBufferSet;
 use std::fmt::{Display, Error as FormatError, Formatter};
 
 use ocl::error::{Error as OclError, Result as OclResult};
-use ocl::{
-    prm::{Float4},
-    Buffer,
-};
+use ocl::{prm::Float4, Buffer};
 use ocl::{Context, Device, Kernel, Program, Queue};
 
 use std::ffi::CString;
@@ -92,17 +89,18 @@ impl Display for ShadeKernelBuildError {
     }
 }
 
-fn build_and_load_buffer<T: ocl::OclPrm>(
+fn build_and_load_buffer<T: ocl::OclPrm + Default>(
     vals: &Vec<T>,
     buffer_id: ShadeKernelBufferID,
     queue: &Queue,
 ) -> Result<Buffer<T>, ShadeKernelBuildError> {
-    match Buffer::builder()
-        .len(vals.len())
-        .queue(queue.clone())
-        .copy_host_slice(vals)
-        .build()
-    {
+    let mut builder = Buffer::builder()
+        .len(vals.len().max(1))
+        .queue(queue.clone());
+    if vals.len() > 0 {
+        builder = builder.copy_host_slice(vals);
+    }
+    match builder.build() {
         Ok(buffer) => Ok(buffer),
         Err(e) => Err(ShadeKernelBuildError::BufferBuildError(buffer_id, e)),
     }

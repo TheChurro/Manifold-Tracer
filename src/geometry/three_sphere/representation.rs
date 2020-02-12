@@ -1,4 +1,6 @@
+use super::EPSILON;
 use na::{Quaternion, UnitQuaternion};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Direction(pub Quaternion<f32>);
@@ -72,7 +74,6 @@ impl Direction {
     }
 }
 
-pub const EPSILON: f32 = 0.00001;
 impl Point {
     pub fn new(a: f32, b: f32, c: f32, d: f32) -> Point {
         Point(UnitQuaternion::new_normalize(Quaternion::new(a, b, c, d)))
@@ -203,5 +204,55 @@ impl Display for Point {
             self.w, self.i, self.j, self.k
         )?;
         Ok(())
+    }
+}
+
+/// Serialization Code
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename(serialize = "Direction", deserialize = "Direction"))]
+struct DirectionSerialize(pub f32, pub f32, pub f32, pub f32);
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename(serialize = "Point", deserialize = "Point"))]
+struct PointSerialize(pub f32, pub f32, pub f32, pub f32);
+
+impl Serialize for Direction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let ds = DirectionSerialize(self.w, self.i, self.j, self.k);
+        ds.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Direction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let ds = DirectionSerialize::deserialize(deserializer)?;
+        Ok(Direction::new(ds.0, ds.1, ds.2, ds.3))
+    }
+}
+
+impl Serialize for Point {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let ds = PointSerialize(self.w, self.i, self.j, self.k);
+        ds.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Point {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let ds = PointSerialize::deserialize(deserializer)?;
+        Ok(Point::new(ds.0, ds.1, ds.2, ds.3))
     }
 }

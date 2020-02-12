@@ -31,6 +31,8 @@ impl CameraS3 {
         let planar = Orientation::rotate_towards(Direction::j(), 0.0, self.theta);
         planar * azimuth
     }
+
+    #[allow(dead_code)]
     pub fn generate_rays_frustrum(&self) -> Vec<(Point, Point)> {
         let mut rays = Vec::new();
         let rot = self.orientation * self.get_interior_rotation();
@@ -75,21 +77,28 @@ impl CameraS3 {
         let center_y = self.image.height() as f32 / 2.0;
         let xz_angle_factor = self.vfov * self.aspect / self.image.width() as f32;
         let yz_angle_factor = self.vfov / self.image.height() as f32;
+        let mut rng = thread_rng();
+        let distro = Uniform::new_inclusive(0.0, 1.0);
         for x in 0..self.image.width() {
-            let xz_angle = xz_angle_factor * (x as f32 - center_x);
-            let xz_angle_cos = xz_angle.cos();
-            let xz_angle_sin = xz_angle.sin();
             for y in 0..self.image.height() {
-                let yz_angle = yz_angle_factor * (center_y - y as f32);
-                let yz_angle_sin = yz_angle.sin();
-                let yz_angle_cos = yz_angle.cos();
-                let tangent = Point::in_direction(
-                    xz_angle_sin * right
-                        + yz_angle_sin * up
-                        + xz_angle_cos * yz_angle_cos * forwards,
-                )
-                .unwrap_or(forwards_point);
-                rays.push((origin, tangent));
+                for _ in 0..self.samples {
+                    let x_jitter = distro.sample(&mut rng);
+                    let y_jitter = distro.sample(&mut rng);
+                    let xz_angle = xz_angle_factor * (x as f32 + x_jitter - center_x);
+                    let xz_angle_cos = xz_angle.cos();
+                    let xz_angle_sin = xz_angle.sin();
+                    let yz_angle = yz_angle_factor * (center_y - (y as f32 + y_jitter));
+                    let yz_angle_sin = yz_angle.sin();
+                    let yz_angle_cos = yz_angle.cos();
+
+                    let tangent = Point::in_direction(
+                        xz_angle_sin * right
+                            + yz_angle_sin * up
+                            + xz_angle_cos * yz_angle_cos * forwards,
+                    )
+                    .unwrap_or(forwards_point);
+                    rays.push((origin, tangent));
+                }
             }
         }
         rays

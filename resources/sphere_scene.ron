@@ -1,0 +1,88 @@
+
+SceneDescription(
+    mesh_objs: [
+        Object(
+            geometry: MeshLocation(
+                obj_path: "resources/utah-teapot-lowres.obj",
+                location: Point(1.0, 1.0, 1.0, 0.0),
+                scale: 0.25,
+            ),
+            color: (0.99, 0.99, 0.99),
+            material: Emissive
+        )
+    ],
+    triangles: [
+        Object(
+            geometry: (Point(0.0, -1.0, 0.0, 0.0), Point(0.0, 0.0, 1.0, 0.0), Point(0.0, 0.0, 0.0, 1.0)),
+            color: (0.25, 0.25, 0.25),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(0.0, -1.0, 0.0, 0.0), Point(0.0, 0.0, 0.0, 1.0), Point(0.0, 0.0, -1.0, 0.0)),
+            color: (0.25, 0.25, 0.75),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(0.0, -1.0, 0.0, 0.0), Point(0.0, 0.0, 0.0, -1.0), Point(0.0, 0.0, 1.0, 0.0)),
+            color: (0.25, 0.75, 0.25),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(0.0, -1.0, 0.0, 0.0), Point(0.0, 0.0, -1.0, 0.0), Point(0.0, 0.0, 0.0, -1.0)),
+            color: (0.75, 0.25, 0.25),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(0.0, 1.0, 0.0, 0.0), Point(0.0, 0.0, 1.0, 0.0), Point(0.0, 0.0, 0.0, 1.0)),
+            color: (0.75, 0.75, 0.75),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(0.0, 1.0, 0.0, 0.0), Point(0.0, 0.0, 0.0, 1.0), Point(0.0, 0.0, -1.0, 0.0)),
+            color: (0.25, 1.5, 1.5),
+            material: Emissive,
+        ),
+        Object(
+            geometry: (Point(0.0, 1.0, 0.0, 0.0), Point(0.0, 0.0, 0.0, -1.0), Point(0.0, 0.0, 1.0, 0.0)),
+            color: (0.75, 0.25, 0.75),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(0.0, 1.0, 0.0, 0.0), Point(0.0, 0.0, -1.0, 0.0), Point(0.0, 0.0, 0.0, -1.0)),
+            color: (0.75, 0.75, 0.25),
+            material: Lambertian,
+        ),
+    ],
+    balls: [
+        Object(
+            geometry: Ball( center: Point(0.0, 0.0, 0.0, 1.0), radius: 0.1 ),
+            color: (3, 3, 3),
+            material: Emissive
+        ),
+        Object(
+            geometry: Ball( center: Point(0.0, 0.0, 1.0, 0.0), radius: 0.1 ),
+            color: (3, 3, 3),
+            material: Emissive
+        ),
+        Object(
+            geometry: Ball( center: Point(0.0, 1.0, 0.0, 0.0), radius: 0.1 ),
+            color: (3, 3, 3),
+            material: Emissive
+        ),
+        Object(
+            geometry: Ball( center: Point(0.0, 0.0, 0.0, -1.0), radius: 0.1 ),
+            color: (3, 3, 3),
+            material: Emissive
+        ),
+        Object(
+            geometry: Ball( center: Point(0.0, 0.0, -1.0, 0.0), radius: 0.1 ),
+            color: (3, 3, 3),
+            material: Emissive
+        ),
+        Object(
+            geometry: Ball( center: Point(0.0, -1.0, 0.0, 0.0), radius: 0.1 ),
+            color: (3, 3, 3),
+            material: Emissive
+        ),
+    ]
+)

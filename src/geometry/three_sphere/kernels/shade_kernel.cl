@@ -49,7 +49,7 @@ float4 cross_three(float4 a, float4 b, float4 c) {
   float y = det(a.xzw, b.xzw, c.xzw);
   float z = det(a.xyw, b.xyw, c.xyw);
   float w = det(a.xyz, b.xyz, c.xyz);
-  return (float4)(-x, y, -z, w);
+  return (float4)(x, -y, z, -w);
 }
 
 void get_basis(float4 point, float4 normal, float4* out_left, float4* out_forwards) {
@@ -116,23 +116,33 @@ __kernel void shade(
   float4 ray_color = ray_color_in[global_address];
   // Hit emitter! Change the color
   if (mat_type == EMISSIVE) {
-    sample_color_out[hit_info.z] = (float4)(fmin(ray_color.xyz * mat_color.xyz, 1.0f), 1.0f);
+    sample_color_out[hit_info.z] = (float4)(ray_color.xyz * mat_color.xyz, 1.0f);
     return;
   }
   // Otherwise we hit a lambertian material
   float4 origin = ray_origin_in[global_address];
   float4 tangent = ray_tangent_in[global_address];
   float4 normal = hit_normal[global_address];
-  uint seed = global_address ^ as_uint(ray_color.x) ^ as_uint(tangent.y) ^ as_uint(origin.z);
+  uint seed = global_address ^ hit_info.w ^ as_uint(tangent.y) ^ as_uint(origin.z);
   float3 sampled_point = rand_hemisphere(&seed);
   float4 right;
   float4 forwards;
   get_basis(origin, normal, &right, &forwards);
+
+  // We hit something, so we should make our normal be opposite
+  // the direction of movement. This ensure we bounce backwards!
+  if (dot(normal, tangent) > 0) normal *= -1;
+  float4 out_tangent = normal * fabs(sampled_point.x)
+                      + right * sampled_point.y
+                   + forwards * sampled_point.z;
+  // if (step_on == 1) {
+  //   sample_color_out[hit_info.z] = 0.5f + 0.5f * normal;
+  //   return;
+  // }
+
   uint new_ray_idx = atomic_add(rays_out, 1);
   ray_origin_out[new_ray_idx] = origin;
-  ray_tangent_out[new_ray_idx] = -normal * sampled_point.x
-                             + right * sampled_point.y
-                          + forwards * sampled_point.z;
+  ray_tangent_out[new_ray_idx] = normalize(out_tangent);
   ray_color_out[new_ray_idx] = mat_color * ray_color;
-  ray_info_out[new_ray_idx] = hit_info;
+  ray_info_out[new_ray_idx] = (uint4)(hit_info.xyz, seed);
 }

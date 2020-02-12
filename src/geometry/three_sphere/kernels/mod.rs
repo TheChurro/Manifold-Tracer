@@ -8,3 +8,4 @@ pub mod wavefront;
 pub use sample_aggregator::SampleAggregator;
 pub use shade_kernel::ShadeKernel;
 pub use trace_kernel::TraceKernel;
+pub use wavefront::Wavefront;

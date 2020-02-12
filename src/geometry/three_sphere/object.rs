@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
 pub struct Object<T> {
     pub geometry: T,
     pub color: [f32; 3],
@@ -14,7 +17,7 @@ impl<T> Object<T> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum MaterialType {
     Lambertian,
     Emissive,
