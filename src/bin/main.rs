@@ -232,6 +232,6 @@ fn main() {
     );
     let kernel = build_kernel(scene, options.width, options.height, options.samples);
 
-    let mut app = App::new(camera, kernel, 256 * 3, 256 * 3, options.rotation_frustrum);
+    let mut app = App::new(camera, kernel, 64, 64, options.rotation_frustrum);
     app.run();
 }
