@@ -207,6 +207,8 @@ struct Options {
     samples: u32,
     #[structopt(short)]
     rotation_frustrum: bool,
+    #[structopt(long)]
+    snapshot: Option<String>
 }
 
 fn main() {
@@ -224,14 +226,27 @@ fn main() {
     }
     let scene = scene.scene;
     use cameras::CameraS3;
-    let camera = CameraS3::new(
+    let mut camera = CameraS3::new(
         std::f32::consts::PI,
         options.width,
         options.height,
         options.samples,
     );
-    let kernel = build_kernel(scene, options.width, options.height, options.samples);
+    let mut kernel = build_kernel(scene, options.width, options.height, options.samples);
 
-    let mut app = App::new(camera, kernel, 64, 64, options.rotation_frustrum);
-    app.run();
+    if let Some(filepath) = options.snapshot {
+        // Load new camera data and write to texture.
+        let rays = if options.rotation_frustrum {
+            camera.generate_rays_rotationally()
+        } else {
+            camera.generate_rays_frustrum()
+        };
+        kernel
+            .run(rays, &mut camera.image)
+            .unwrap_or_else(|e| panic!("Failed to trace: {}", e));
+        camera.image.save(filepath).unwrap_or_else(|e| panic!("Failed to save: {}", e));
+    } else {
+        let mut app = App::new(camera, kernel, 512, 512, options.rotation_frustrum);
+        app.run();
+    }
 }

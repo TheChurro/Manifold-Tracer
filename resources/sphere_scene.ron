@@ -4,8 +4,8 @@ SceneDescription(
         Object(
             geometry: MeshLocation(
                 obj_path: "resources/utah-teapot-lowres.obj",
-                location: Point(1.0, 1.0, 0.0, 0.0),
-                scale: 0.75,
+                location: Point(3.0, 1.0, 1.0, 3.0),
+                scale: 0.25,
             ),
             color: (0.99, 0.99, 0.99),
             material: Lambertian
@@ -52,6 +52,26 @@ SceneDescription(
             color: (0.75, 0.75, 0.25),
             material: Lambertian,
         ),
+        // Object(
+        //     geometry: (Point(1.0, 1.0, 0.0, 1.0), Point(1.0, 0.0, 1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
+        //     color: (0.75, 0.75, 0.25),
+        //     material: Lambertian,
+        // ),
+        // Object(
+        //     geometry: (Point(1.0, -1.0, 0.0, 1.0), Point(1.0, 0.0, 1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
+        //     color: (0.75, 0.25, 0.25),
+        //     material: Lambertian,
+        // ),
+        // Object(
+        //     geometry: (Point(1.0, 1.0, 0.0, 1.0), Point(1.0, 0.0, -1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
+        //     color: (0.25, 0.75, 0.25),
+        //     material: Lambertian,
+        // ),
+        // Object(
+        //     geometry: (Point(1.0, -1.0, 0.0, 1.0), Point(1.0, 0.0, -1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
+        //     color: (0.25, 0.25, 0.25),
+        //     material: Lambertian,
+        // ),
     ],
     balls: [
         // Object(
@@ -69,20 +89,25 @@ SceneDescription(
         //     color: (3, 3, 3),
         //     material: Emissive
         // ),
+        // Object(
+        //     geometry: Ball( center: Point(0.0, 0.0, 0.0, 1.0), radius: 0.1 ),
+        //     color: (3, 3, 3),
+        //     material: Emissive
+        // ),
         Object(
-            geometry: Ball( center: Point(0.0, 0.0, 0.0, -1.0), radius: 0.1 ),
+            geometry: Ball( center: Point(1.0, 0.0, 0.0, 0.0), radius: 0.1 ),
             color: (3, 3, 3),
             material: Emissive
         ),
-        Object(
-            geometry: Ball( center: Point(0.0, 0.0, -1.0, 0.0), radius: 0.1 ),
-            color: (3, 3, 3),
-            material: Emissive
-        ),
-        Object(
-            geometry: Ball( center: Point(0.0, -1.0, 0.0, 0.0), radius: 0.1 ),
-            color: (3, 3, 3),
-            material: Emissive
-        ),
+        // Object(
+        //     geometry: Ball( center: Point(0.0, 0.0, 1.0, 0.0), radius: 0.1 ),
+        //     color: (3, 3, 3),
+        //     material: Emissive
+        // ),
+        // Object(
+        //     geometry: Ball( center: Point(0.0, 1.0, 0.0, 0.0), radius: 0.1 ),
+        //     color: (3, 3, 3),
+        //     material: Emissive
+        // ),
     ]
 )
