@@ -8,7 +8,7 @@ __kernel void trace(
   __global float4* ray_tangent_in,
   __global float4* ray_color_in,
   __global uint4*  ray_info_in,
-  __private const int rays_in,
+  __private const uint rays_in,
 
   __global float4* ray_origin_out,
   __global float4* ray_tangent_out,
@@ -20,11 +20,11 @@ __kernel void trace(
   __global const float4* edge_bc_normals,
   __global const float4* edge_ca_normals,
   __global const float4* normals,
-  __private const int num_triangles,
+  __private const uint num_triangles,
 
   __global const float4* ball_centers,
   __global const float*  ball_radii,
-  __private const int num_balls
+  __private const uint num_balls
 ) {
   uint global_address = get_global_id(0);
   uint4 ray_info = ray_info_in[global_address];
