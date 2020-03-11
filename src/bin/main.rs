@@ -208,7 +208,7 @@ struct Options {
     #[structopt(short)]
     rotation_frustrum: bool,
     #[structopt(long)]
-    snapshot: Option<String>
+    snapshot: Option<String>,
 }
 
 fn main() {
@@ -244,9 +244,12 @@ fn main() {
         kernel
             .run(rays, &mut camera.image)
             .unwrap_or_else(|e| panic!("Failed to trace: {}", e));
-        camera.image.save(filepath).unwrap_or_else(|e| panic!("Failed to save: {}", e));
+        camera
+            .image
+            .save(filepath)
+            .unwrap_or_else(|e| panic!("Failed to save: {}", e));
     } else {
-        let mut app = App::new(camera, kernel, 512, 512, options.rotation_frustrum);
+        let mut app = App::new(camera, kernel, options.width, options.height, options.rotation_frustrum);
         app.run();
     }
 }

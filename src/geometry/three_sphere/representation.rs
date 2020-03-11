@@ -36,6 +36,9 @@ impl Direction {
         Direction(Quaternion::new(a, b, c, d))
     }
 
+    pub fn zero() -> Direction {
+        Direction(Quaternion::new(0.0, 0.0, 0.0, 0.0))
+    }
     pub fn one() -> Direction {
         Direction(Quaternion::new(1.0, 0.0, 0.0, 0.0))
     }

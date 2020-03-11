@@ -4,6 +4,7 @@ use crate::geometry::three_sphere::kernels::{SampleAggregator, ShadeKernel, Trac
 use crate::geometry::three_sphere::object::MaterialType;
 use crate::geometry::three_sphere::Point;
 use crate::geometry::three_sphere::{Ball, Object, Triangle};
+use crate::geometry::three_sphere::BoundingVolumeHierarchy;
 
 use ocl::{enums::DeviceSpecifier, Device, DeviceType};
 use ocl::{Context, Platform, Queue};
@@ -31,7 +32,7 @@ pub struct InOutBufferSet {
     pub shade_ray_tangent: Buffer<Float4>,
     pub shade_ray_color: Buffer<Float4>,
     pub shade_ray_info: Buffer<Uint4>,
-    pub shade_rays_produced: Buffer<i32>,
+    pub shade_rays_produced: Buffer<u32>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -237,6 +238,7 @@ impl Wavefront {
             Ok(builder) => builder,
             Err(e) => return Err(WavefrontBuildError::ShadeKernelError(e)),
         };
+        let accelerator = BoundingVolumeHierarchy::new(&mut self.triangles, &mut self.balls);
         for tri_obj in &self.triangles {
             trace_builder.load_triangle(&tri_obj.geometry);
             shade_builder.add_triangle_material(tri_obj.color, tri_obj.material);
@@ -245,7 +247,7 @@ impl Wavefront {
             trace_builder.load_ball(&ball_obj.geometry);
             shade_builder.add_ball_material(ball_obj.color, ball_obj.material);
         }
-        let trace = match trace_builder.build(info.num_rays, &self.queue, &buffers) {
+        let trace = match trace_builder.build(info.num_rays, &self.queue, &buffers, &accelerator) {
             Ok(trace) => trace,
             Err(e) => return Err(WavefrontBuildError::TraceKernelBuildError(e)),
         };
@@ -253,7 +255,6 @@ impl Wavefront {
             Ok(shade) => shade,
             Err(e) => return Err(WavefrontBuildError::ShadeKernelBuildError(e)),
         };
-        println!("BUILDING WITH SIZES {} {} {}", width, height, num_samples);
         let aggregate = match SampleAggregator::new(
             info.width,
             info.height,

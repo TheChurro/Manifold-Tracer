@@ -1,3 +1,4 @@
+pub mod accelerator;
 pub mod kernels;
 pub mod mesh;
 pub mod object;
@@ -14,3 +15,4 @@ pub use orientation::Orientation;
 pub use primitives::{Ball, Triangle};
 pub use representation::Direction;
 pub use representation::Point;
+pub use accelerator::{BoundingVolumeHierarchy, BVHNode};

@@ -79,11 +79,11 @@ SceneDescription(
         //     color: (3, 3, 3),
         //     material: Emissive
         // ),
-        // Object(
-        //     geometry: Ball( center: Point(0.0, 0.0, 1.0, 0.0), radius: 0.1 ),
-        //     color: (3, 3, 3),
-        //     material: Emissive
-        // ),
+        Object(
+            geometry: Ball( center: Point(0.0, 0.0, 1.0, 0.0), radius: 0.1 ),
+            color: (3, 3, 3),
+            material: Emissive
+        ),
         // Object(
         //     geometry: Ball( center: Point(0.0, 1.0, 0.0, 0.0), radius: 0.1 ),
         //     color: (3, 3, 3),
@@ -94,11 +94,11 @@ SceneDescription(
         //     color: (3, 3, 3),
         //     material: Emissive
         // ),
-        Object(
-            geometry: Ball( center: Point(1.0, 0.0, 0.0, 0.0), radius: 0.1 ),
-            color: (3, 3, 3),
-            material: Emissive
-        ),
+        // Object(
+        //     geometry: Ball( center: Point(1.0, 0.0, 0.0, 0.0), radius: 0.1 ),
+        //     color: (3, 3, 3),
+        //     material: Emissive
+        // ),
         // Object(
         //     geometry: Ball( center: Point(0.0, 0.0, 1.0, 0.0), radius: 0.1 ),
         //     color: (3, 3, 3),

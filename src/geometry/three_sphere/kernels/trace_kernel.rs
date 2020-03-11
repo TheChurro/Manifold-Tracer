@@ -5,7 +5,7 @@ use crate::geometry::three_sphere::*;
 use std::fmt::{Display, Error as FormatError, Formatter};
 
 use ocl::error::{Error as OclError, Result as OclResult};
-use ocl::{prm::Float4, Buffer};
+use ocl::{prm::{Float4, Uint4}, Buffer};
 use ocl::{Context, Device, Kernel, Program, Queue};
 
 use std::ffi::CString;
@@ -30,6 +30,9 @@ pub struct TraceKernel {
     pub normals_buffer: Buffer<Float4>,
     pub ball_centers_buffer: Buffer<Float4>,
     pub ball_radii_buffer: Buffer<f32>,
+    pub hierarchy_ball_centers_buffer: Buffer<Float4>,
+    pub hierarchy_ball_radii_buffer: Buffer<f32>,
+    pub hierarchy_tri_data_buffer: Buffer<Uint4>,
 }
 
 impl TraceKernel {
@@ -79,6 +82,9 @@ pub enum TraceKernelBufferID {
     NormalsBuffer,
     BallCentersBuffer,
     BallRadiiBuffer,
+    HierarchyBallCentersBuffer,
+    HierarchyBallRadiiBuffer,
+    HierarchyTriangleDataBuffer,
 }
 
 #[derive(Debug)]
@@ -145,6 +151,7 @@ impl TraceKernelBuilder {
         num_rays: u32,
         queue: &Queue,
         in_out_buffers: &InOutBufferSet,
+        accelerator: &BoundingVolumeHierarchy,
     ) -> Result<TraceKernel, TraceKernelBuildError> {
         use TraceKernelBufferID::*;
         use TraceKernelBuildError::*;
@@ -158,6 +165,26 @@ impl TraceKernelBuilder {
         let ball_centers_buffer =
             build_and_load_buffer(&self.ball_centers, BallCentersBuffer, queue)?;
         let ball_radii_buffer = build_and_load_buffer(&self.ball_radii, BallRadiiBuffer, queue)?;
+        let mut hierarchy_ball_centers = Vec::new();
+        let mut hierarchy_ball_radii = Vec::new();
+        let mut hierarchy_tri_data = Vec::new();
+        for node in &accelerator.triangle_hierarchy {
+            match node {
+                &BVHNode::Branch{ ref boundary, ref left, ref right } => {
+                    hierarchy_ball_centers.push(Float4::from(boundary.center));
+                    hierarchy_ball_radii.push(boundary.radius);
+                    hierarchy_tri_data.push(Uint4::new(0u32, *left as u32, *right as u32, 0u32));
+                },
+                &BVHNode::Leaf{ ref boundary, ref min, ref max } => {
+                    hierarchy_ball_centers.push(Float4::from(boundary.center));
+                    hierarchy_ball_radii.push(boundary.radius);
+                    hierarchy_tri_data.push(Uint4::new(1u32, *min as u32, *max as u32, 0u32));
+                },
+            }
+        }
+        let hierarchy_ball_centers_buffer = build_and_load_buffer(&hierarchy_ball_centers, HierarchyBallCentersBuffer, queue)?;
+        let hierarchy_ball_radii_buffer = build_and_load_buffer(&hierarchy_ball_radii, HierarchyBallRadiiBuffer, queue)?;
+        let hierarchy_tri_data_buffer = build_and_load_buffer(&hierarchy_tri_data, HierarchyTriangleDataBuffer, queue)?;
         match Kernel::builder()
             .program(&self.kernel_program)
             .name("trace")
@@ -166,7 +193,7 @@ impl TraceKernelBuilder {
             .arg(&in_out_buffers.trace_ray_tangent)
             .arg(&in_out_buffers.trace_ray_color)
             .arg(&in_out_buffers.trace_ray_info)
-            .arg(&0)
+            .arg(&(0 as u32))
             .arg(&in_out_buffers.shade_ray_origin)
             .arg(&in_out_buffers.shade_ray_tangent)
             .arg(&in_out_buffers.shade_ray_color)
@@ -176,10 +203,13 @@ impl TraceKernelBuilder {
             .arg(&edge_bc_normals_buffer)
             .arg(&edge_ca_normals_buffer)
             .arg(&normals_buffer)
-            .arg(&self.normals.len())
+            .arg(&(self.normals.len() as u32))
             .arg(&ball_centers_buffer)
             .arg(&ball_radii_buffer)
-            .arg(&self.ball_radii.len())
+            .arg(&(self.ball_radii.len() as u32))
+            .arg(&hierarchy_ball_centers_buffer)
+            .arg(&hierarchy_ball_radii_buffer)
+            .arg(&hierarchy_tri_data_buffer)
             .queue(queue.clone())
             .build()
         {
@@ -191,6 +221,9 @@ impl TraceKernelBuilder {
                 normals_buffer: normals_buffer,
                 ball_centers_buffer: ball_centers_buffer,
                 ball_radii_buffer: ball_radii_buffer,
+                hierarchy_ball_centers_buffer: hierarchy_ball_centers_buffer,
+                hierarchy_ball_radii_buffer: hierarchy_ball_radii_buffer,
+                hierarchy_tri_data_buffer: hierarchy_tri_data_buffer,
             }),
             Err(e) => Err(KernelBuildError(e)),
         }

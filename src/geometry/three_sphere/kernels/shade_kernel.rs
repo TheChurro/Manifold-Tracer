@@ -150,7 +150,7 @@ impl ShadeKernelBuilder {
             .arg(&in_out_buffers.shade_ray_color)
             .arg(&in_out_buffers.shade_ray_info)
             .arg(&in_out_buffers.hit_normal)
-            .arg(&0)
+            .arg(&(0 as u32))
             .arg(&in_out_buffers.trace_ray_origin)
             .arg(&in_out_buffers.trace_ray_tangent)
             .arg(&in_out_buffers.trace_ray_color)

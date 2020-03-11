@@ -61,7 +61,7 @@ impl Triangle {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Ball {
     pub center: Point,
     pub radius: f32,
