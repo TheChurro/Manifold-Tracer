@@ -16,7 +16,7 @@ mod cameras;
 use crate::structopt::StructOpt;
 use manifold_tracer::geometry::three_sphere::kernels::wavefront::Wavefront;
 use manifold_tracer::geometry::three_sphere::scene_description::SceneDescription;
-fn build_kernel(scene: SceneDescription, width: u32, height: u32, num_samples: u32) -> Wavefront {
+fn build_kernel(scene: &SceneDescription, width: u32, height: u32, num_samples: u32) -> Wavefront {
     let mut wavefront = Wavefront::new();
     scene.dump_to_wavefront(&mut wavefront);
     match wavefront.build(width, height, num_samples) {
@@ -203,12 +203,18 @@ struct Options {
     width: u32,
     #[structopt(short, default_value = "256")]
     height: u32,
+    #[structopt(long)]
+    vwidth: Option<u32>,
+    #[structopt(long)]
+    vheight: Option<u32>,
     #[structopt(short, default_value = "10")]
     samples: u32,
     #[structopt(short)]
     rotation_frustrum: bool,
     #[structopt(long)]
     snapshot: Option<String>,
+    #[structopt(long)]
+    sequences: bool,
 }
 
 fn main() {
@@ -232,7 +238,53 @@ fn main() {
         options.height,
         options.samples,
     );
-    let mut kernel = build_kernel(scene, options.width, options.height, options.samples);
+    let mut kernel = build_kernel(&scene, options.width, options.height, options.samples);
+
+    if options.sequences {
+        for sequence in scene.sequences {
+            let num_frames = (sequence.fps as f32 * sequence.angle / sequence.speed).round() as u32;
+            let frame_move = sequence.angle / num_frames as f32;
+            camera.theta = sequence.view_angles[0];
+            camera.azimuth = sequence.view_angles[1];
+            use na::{Unit, Vector3};
+            let frame_disp = Unit::new_normalize(Vector3::new(sequence.move_dir[0], sequence.move_dir[1], sequence.move_dir[2])).into_inner() * frame_move;
+            println!("MOVING {} per frame", frame_disp);
+            std::fs::create_dir_all(&sequence.folder).expect("UNABLE TO CREATE DIRECTORIES!");
+            for frame in 0..num_frames + 1 {
+                let mut accumulator = vec![Vector3::zeros(); (options.width * options.height) as usize];
+                for _ in 0..sequence.oversamples {
+                    let rays = if options.rotation_frustrum {
+                        camera.generate_rays_rotationally()
+                    } else {
+                        camera.generate_rays_frustrum()
+                    };
+                    kernel
+                        .run(rays, &mut camera.image)
+                        .unwrap_or_else(|e| panic!("Failed to trace: {}", e));
+                    for x in 0..options.width {
+                        for y in 0..options.height {
+                            let pixel = camera.image.get_pixel(x, y);
+                            accumulator[(x + y * options.width) as usize] += Vector3::new(pixel[0] as f32 / 255.0, pixel[1] as f32 / 255.0, pixel[2] as f32 / 255.0);
+                        }
+                    }
+                }
+                for x in 0..options.width {
+                    for y in 0..options.height {
+                        use image::Rgba;
+                        let accum = accumulator[(x + y * options.width) as usize];
+                        let color = accum / (sequence.oversamples as f32);
+                        let color = Vector3::new(color.x.min(1.0).max(0.0), color.y.min(1.0).max(0.0), color.z.min(1.0).max(0.0));
+                        camera.image.put_pixel(x, y, Rgba([(255.0 * color.x) as u8, (255.0 * color.y) as u8, (255.0 * color.z) as u8, 255]));
+                    }
+                }
+                camera.image.save(format!("{}/frame{}.png", &sequence.folder, frame)).expect("FAILED TO SAVE FRAME!");
+                camera.translate(frame_disp.x, frame_disp.y, frame_disp.z);
+                camera.theta += sequence.angular_speed[0] / sequence.fps as f32;
+                camera.azimuth += sequence.angular_speed[1] / sequence.fps as f32;
+            }
+        }
+        return;
+    }
 
     if let Some(filepath) = options.snapshot {
         // Load new camera data and write to texture.
@@ -249,7 +301,13 @@ fn main() {
             .save(filepath)
             .unwrap_or_else(|e| panic!("Failed to save: {}", e));
     } else {
-        let mut app = App::new(camera, kernel, options.width, options.height, options.rotation_frustrum);
+        let mut app = App::new(
+            camera,
+            kernel,
+            options.vwidth.unwrap_or(options.width),
+            options.vheight.unwrap_or(options.height),
+            options.rotation_frustrum,
+        );
         app.run();
     }
 }

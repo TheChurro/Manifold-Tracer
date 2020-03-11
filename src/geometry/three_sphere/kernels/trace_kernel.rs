@@ -5,7 +5,10 @@ use crate::geometry::three_sphere::*;
 use std::fmt::{Display, Error as FormatError, Formatter};
 
 use ocl::error::{Error as OclError, Result as OclResult};
-use ocl::{prm::{Float4, Uint4}, Buffer};
+use ocl::{
+    prm::{Float4, Uint4},
+    Buffer,
+};
 use ocl::{Context, Device, Kernel, Program, Queue};
 
 use std::ffi::CString;
@@ -170,21 +173,32 @@ impl TraceKernelBuilder {
         let mut hierarchy_tri_data = Vec::new();
         for node in &accelerator.triangle_hierarchy {
             match node {
-                &BVHNode::Branch{ ref boundary, ref left, ref right } => {
+                &BVHNode::Branch {
+                    ref boundary,
+                    ref left,
+                    ref right,
+                } => {
                     hierarchy_ball_centers.push(Float4::from(boundary.center));
                     hierarchy_ball_radii.push(boundary.radius);
                     hierarchy_tri_data.push(Uint4::new(0u32, *left as u32, *right as u32, 0u32));
-                },
-                &BVHNode::Leaf{ ref boundary, ref min, ref max } => {
+                }
+                &BVHNode::Leaf {
+                    ref boundary,
+                    ref min,
+                    ref max,
+                } => {
                     hierarchy_ball_centers.push(Float4::from(boundary.center));
                     hierarchy_ball_radii.push(boundary.radius);
                     hierarchy_tri_data.push(Uint4::new(1u32, *min as u32, *max as u32, 0u32));
-                },
+                }
             }
         }
-        let hierarchy_ball_centers_buffer = build_and_load_buffer(&hierarchy_ball_centers, HierarchyBallCentersBuffer, queue)?;
-        let hierarchy_ball_radii_buffer = build_and_load_buffer(&hierarchy_ball_radii, HierarchyBallRadiiBuffer, queue)?;
-        let hierarchy_tri_data_buffer = build_and_load_buffer(&hierarchy_tri_data, HierarchyTriangleDataBuffer, queue)?;
+        let hierarchy_ball_centers_buffer =
+            build_and_load_buffer(&hierarchy_ball_centers, HierarchyBallCentersBuffer, queue)?;
+        let hierarchy_ball_radii_buffer =
+            build_and_load_buffer(&hierarchy_ball_radii, HierarchyBallRadiiBuffer, queue)?;
+        let hierarchy_tri_data_buffer =
+            build_and_load_buffer(&hierarchy_tri_data, HierarchyTriangleDataBuffer, queue)?;
         match Kernel::builder()
             .program(&self.kernel_program)
             .name("trace")

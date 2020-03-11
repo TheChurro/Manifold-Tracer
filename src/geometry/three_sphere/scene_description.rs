@@ -1,5 +1,6 @@
 use super::kernels::Wavefront;
 use super::{Ball, MeshDescription, Object, Offset, Orientation, Point, Triangle, EPSILON};
+use na::{UnitQuaternion, Vector3};
 use ron::de::from_str;
 use wavefront_obj::obj::parse;
 
@@ -11,6 +12,8 @@ pub struct SceneDescription {
     pub triangles: Vec<Object<Triangle>>,
     #[serde(default)]
     pub balls: Vec<Object<Ball>>,
+    #[serde(default)]
+    pub sequences: Vec<Sequence>,
 }
 
 #[derive(Debug)]
@@ -71,11 +74,55 @@ impl SceneDescription {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum MeshPivot {
+    CenterCenter,
+    BottomCenter,
+    TopCenter,
+}
+
+impl Default for MeshPivot {
+    fn default() -> Self {
+        MeshPivot::CenterCenter
+    }
+}
+
+impl MeshPivot {
+    pub fn to_pivot(
+        self,
+        center: Vector3<f32>,
+        mins: Vector3<f32>,
+        maxs: Vector3<f32>,
+    ) -> Vector3<f32> {
+        match self {
+            Self::CenterCenter => center,
+            Self::BottomCenter => Vector3::new(center.x, mins.y, center.z),
+            Self::TopCenter => Vector3::new(center.x, maxs.y, center.z),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Sequence {
+    pub move_dir: [f32; 3],
+    pub view_angles: [f32; 2],
+    pub angular_speed: [f32; 2],
+    pub angle: f32,
+    pub speed: f32,
+    pub fps: u32,
+    pub oversamples: u32,
+    pub folder: String
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct MeshLocation {
     pub obj_path: String,
     pub location: Point,
     pub scale: f32,
+    #[serde(default)]
+    pub pivot: MeshPivot,
+    #[serde(default)]
+    pub euler_angles: [f32; 3],
     #[serde(skip)]
     pub mesh_descriptions: Option<Vec<MeshDescription>>,
 }
@@ -93,11 +140,23 @@ impl MeshLocation {
         let obj_set = parse(mesh_obj_str).map_err(|e| ObjParse(e))?;
         let mut meshes = Vec::new();
         for obj in obj_set.objects {
-            use na::Vector3;
             use wavefront_obj::obj::Primitive::Triangle as PTri;
             let mut center_accum = Vector3::<f32>::zeros();
+            use std::f32::{INFINITY, NEG_INFINITY};
+            let mut mins = Vector3::new(INFINITY, INFINITY, INFINITY);
+            let mut maxs = Vector3::new(NEG_INFINITY, NEG_INFINITY, NEG_INFINITY);
             for vert in &obj.vertices {
                 center_accum += Vector3::new(vert.x as f32, vert.y as f32, vert.z as f32);
+                mins = Vector3::new(
+                    (vert.x as f32).min(mins.x),
+                    (vert.y as f32).min(mins.y),
+                    (vert.z as f32).min(mins.z),
+                );
+                maxs = Vector3::new(
+                    (vert.x as f32).max(maxs.x),
+                    (vert.y as f32).max(maxs.y),
+                    (vert.z as f32).max(maxs.z),
+                );
             }
             let center = center_accum / obj.vertices.len() as f32;
             let mut obj_radius = 0f32;
@@ -107,15 +166,27 @@ impl MeshLocation {
                 );
             }
             let mut vertex_offsets = Vec::new();
+            let pivot = self.pivot.to_pivot(center, mins, maxs);
+            let rotation = UnitQuaternion::from_axis_angle(
+                &Vector3::x_axis(),
+                self.euler_angles[0].to_radians(),
+            ) * UnitQuaternion::from_axis_angle(
+                &Vector3::y_axis(),
+                self.euler_angles[1].to_radians(),
+            ) * UnitQuaternion::from_axis_angle(
+                &Vector3::z_axis(),
+                self.euler_angles[2].to_radians(),
+            );
             for vert in &obj.vertices {
                 let mut tangent =
-                    Vector3::new(vert.x as f32, vert.y as f32, vert.z as f32) - center;
+                    Vector3::new(vert.x as f32, vert.y as f32, vert.z as f32) - pivot;
                 let dist = tangent.norm();
                 if dist < EPSILON {
                     tangent = Vector3::new(1.0, 0.0, 0.0);
                 } else {
                     tangent /= dist;
                 }
+                tangent = rotation * tangent;
                 vertex_offsets.push(Offset {
                     tangent: [tangent.x, tangent.y, tangent.z],
                     distance: self.scale * dist / obj_radius,

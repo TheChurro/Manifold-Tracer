@@ -9,10 +9,10 @@ pub mod scene_description;
 
 pub const EPSILON: f32 = 0.00001;
 
+pub use accelerator::{BVHNode, BoundingVolumeHierarchy};
 pub use mesh::{MeshDescription, MeshInstance, Offset};
 pub use object::{MaterialType, Object};
 pub use orientation::Orientation;
 pub use primitives::{Ball, Triangle};
 pub use representation::Direction;
 pub use representation::Point;
-pub use accelerator::{BoundingVolumeHierarchy, BVHNode};

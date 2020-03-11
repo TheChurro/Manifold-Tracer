@@ -123,7 +123,7 @@ __kernel void shade(
   float4 origin = ray_origin_in[global_address];
   float4 tangent = ray_tangent_in[global_address];
   float4 normal = hit_normal[global_address];
-  uint seed = global_address ^ hit_info.w ^ as_uint(tangent.y) ^ as_uint(origin.z);
+  uint seed = hit_info.w;
   float3 sampled_point = rand_hemisphere(&seed);
   float4 right;
   float4 forwards;

@@ -105,7 +105,6 @@ __kernel void trace(
 ) {
   uint global_address = get_global_id(0);
   uint4 ray_info = ray_info_in[global_address];
-  ray_info.w = 0;
   if (global_address >= (uint)rays_in) return;
   float4 origin = ray_origin_in[global_address];
   float4 tangent = ray_tangent_in[global_address];

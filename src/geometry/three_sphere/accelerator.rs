@@ -51,7 +51,7 @@ fn build_tri_bvh(
         hierarchy.push(BVHNode::Leaf {
             boundary: boundary,
             min: start,
-            max: end
+            max: end,
         });
     } else {
         let mut rng = thread_rng();
@@ -73,10 +73,10 @@ fn build_tri_bvh(
                 .unwrap()
         });
         let branch_index = hierarchy.len();
-        hierarchy.push(BVHNode::Branch{
+        hierarchy.push(BVHNode::Branch {
             boundary: boundary.clone(),
             left: 0,
-            right: 0
+            right: 0,
         });
         let left_index = hierarchy.len();
         build_tri_bvh(
@@ -86,7 +86,7 @@ fn build_tri_bvh(
             (start + end + 1) / 2,
             leaf_size,
             depth_at + 1,
-            max_depth
+            max_depth,
         );
         if end != (start + end + 1) / 2 {
             let right_index = hierarchy.len();
@@ -97,21 +97,20 @@ fn build_tri_bvh(
                 end,
                 leaf_size,
                 depth_at + 1,
-                max_depth
+                max_depth,
             );
             hierarchy[branch_index] = BVHNode::Branch {
                 boundary: boundary,
                 left: left_index,
-                right: right_index
+                right: right_index,
             };
         } else {
             hierarchy[branch_index] = BVHNode::Branch {
                 boundary: boundary,
                 left: left_index,
-                right: 0usize
+                right: 0usize,
             };
         }
-
     }
 }
 
@@ -131,7 +130,8 @@ fn build_ball_bvh(
     let center = Point::in_direction(accum).unwrap_or(Point::one());
     let mut radius = 0.0f32;
     for ball_obj in in_balls.iter() {
-        radius = radius.max(ball_obj.geometry.radius + f32::acos(center.dot(&ball_obj.geometry.center)));
+        radius =
+            radius.max(ball_obj.geometry.radius + f32::acos(center.dot(&ball_obj.geometry.center)));
     }
     let boundary = Ball::new(center, radius);
     if end - start < leaf_size || depth_at == max_depth {
@@ -154,16 +154,17 @@ fn build_ball_bvh(
             .unwrap_or(Point::one());
         }
         in_balls[start..end].sort_by(|t0, t1| {
-            t0.geometry.center
+            t0.geometry
+                .center
                 .dot(&axis)
                 .partial_cmp(&t1.geometry.center.dot(&axis))
                 .unwrap()
         });
         let branch_index = hierarchy.len();
-        hierarchy.push(BVHNode::Branch{
+        hierarchy.push(BVHNode::Branch {
             boundary: boundary.clone(),
             left: 0,
-            right: 0
+            right: 0,
         });
         let left_index = hierarchy.len();
         build_ball_bvh(
@@ -173,7 +174,7 @@ fn build_ball_bvh(
             start + end / 2,
             leaf_size,
             depth_at + 1,
-            max_depth
+            max_depth,
         );
         let right_index = hierarchy.len();
         build_ball_bvh(
@@ -183,12 +184,12 @@ fn build_ball_bvh(
             end,
             leaf_size,
             depth_at + 1,
-            max_depth
+            max_depth,
         );
         hierarchy[branch_index] = BVHNode::Branch {
             boundary: boundary,
             left: left_index,
-            right: right_index
+            right: right_index,
         };
     }
 }
@@ -200,26 +201,10 @@ impl BoundingVolumeHierarchy {
     ) -> BoundingVolumeHierarchy {
         let mut tri_hierarchy = Vec::new();
         let num_triangles = in_triangles.len();
-        build_tri_bvh(
-            &mut tri_hierarchy,
-            in_triangles,
-            0,
-            num_triangles,
-            8,
-            0,
-            63
-        );
+        build_tri_bvh(&mut tri_hierarchy, in_triangles, 0, num_triangles, 8, 0, 63);
         let mut ball_hierarchy = Vec::new();
         let num_balls = in_balls.len();
-        build_ball_bvh(
-            &mut ball_hierarchy,
-            in_balls,
-            0,
-            num_balls,
-            8,
-            0,
-            63
-        );
+        build_ball_bvh(&mut ball_hierarchy, in_balls, 0, num_balls, 8, 0, 63);
 
         BoundingVolumeHierarchy {
             triangle_hierarchy: tri_hierarchy,
@@ -236,7 +221,11 @@ impl BoundingVolumeHierarchy {
         let mut node = 0u32;
         while node != ENTRYPOINT_SENTINEL {
             match &self.triangle_hierarchy[node as usize] {
-                &BVHNode::Branch{ ref left, ref right, .. } => {
+                &BVHNode::Branch {
+                    ref left,
+                    ref right,
+                    ..
+                } => {
                     println!("BRANCH[{}]: {} & {}", node, left, right);
                     node = *left as u32;
                     if *right != 0 {
@@ -244,7 +233,9 @@ impl BoundingVolumeHierarchy {
                         traversal_stack[traversal_ptr as usize] = *right as u32;
                     }
                 }
-                &BVHNode::Leaf{ ref min, ref max, .. } => {
+                &BVHNode::Leaf {
+                    ref min, ref max, ..
+                } => {
                     println!("LEAF[{}]: {} -> {}", node, min, max);
                     node = traversal_stack[traversal_ptr as usize];
                     traversal_ptr -= 1;

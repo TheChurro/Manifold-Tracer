@@ -2,9 +2,9 @@ use crate::geometry::three_sphere::kernels::shade_kernel::ShadeKernelBuildError;
 use crate::geometry::three_sphere::kernels::trace_kernel::TraceKernelBuildError;
 use crate::geometry::three_sphere::kernels::{SampleAggregator, ShadeKernel, TraceKernel};
 use crate::geometry::three_sphere::object::MaterialType;
+use crate::geometry::three_sphere::BoundingVolumeHierarchy;
 use crate::geometry::three_sphere::Point;
 use crate::geometry::three_sphere::{Ball, Object, Triangle};
-use crate::geometry::three_sphere::BoundingVolumeHierarchy;
 
 use ocl::{enums::DeviceSpecifier, Device, DeviceType};
 use ocl::{Context, Platform, Queue};

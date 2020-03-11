@@ -4,110 +4,152 @@ SceneDescription(
         Object(
             geometry: MeshLocation(
                 obj_path: "resources/utah-teapot-lowres.obj",
-                location: Point(3.0, 1.0, 1.0, 3.0),
+                location: Point(0.0, 0.0, 0.0, 1.0),
+                pivot: BottomCenter,
+                euler_angles: (90.0, 0.0, 0.0),
                 scale: 0.25,
             ),
-            color: (0.99, 0.99, 0.99),
+            color: (0.33, 0.33, 0.99),
             material: Lambertian
+        ),
+        Object(
+            geometry: MeshLocation(
+                obj_path: "resources/utah-teapot-lowres.obj",
+                location: Point(0.0, 0.0, 1.0, 0.0),
+                pivot: BottomCenter,
+                euler_angles: (180.0, 0.0, 0.0),
+                scale: 0.25,
+            ),
+            color: (0.33, 0.99, 0.33),
+            material: Lambertian
+        ),
+        Object(
+            geometry: MeshLocation(
+                obj_path: "resources/utah-teapot-lowres.obj",
+                location: Point(0.0, 1.0, 0.0, 0.0),
+                pivot: BottomCenter,
+                euler_angles: (270, 0.0, 0.0),
+                scale: 0.25,
+            ),
+            color: (0.99, 0.33, 0.33),
+            material: Lambertian
+        ),
+        Object(
+            geometry: MeshLocation(
+                obj_path: "resources/utah-teapot-lowres.obj",
+                location: Point(-1.0, 0.0, 0.0, 0.0),
+                pivot: BottomCenter,
+                euler_angles: (0.0, 0.0, 0.0),
+                scale: 0.25,
+            ),
+            color: (5, 5, 5),
+            material: Emissive
         )
     ],
     triangles: [
         Object(
-            geometry: (Point(0.0, -1.0, 0.0, 0.0), Point(0.0, 0.0, 1.0, 0.0), Point(0.0, 0.0, 0.0, 1.0)),
+            geometry: (Point(3.0, -1.0, 0.0, 0.0), Point(3.0, 0.0, 1.0, 0.0), Point(3.0, 0.0, 0.0, 1.0)),
             color: (0.25, 0.25, 0.25),
             material: Lambertian,
         ),
         Object(
-            geometry: (Point(0.0, -1.0, 0.0, 0.0), Point(0.0, 0.0, 0.0, 1.0), Point(0.0, 0.0, -1.0, 0.0)),
+            geometry: (Point(-3.0, -1.0, 0.0, 0.0), Point(-3.0, 0.0, 0.0, 1.0), Point(-3.0, 0.0, -1.0, 0.0)),
             color: (0.25, 0.25, 0.75),
             material: Lambertian,
         ),
         Object(
-            geometry: (Point(0.0, -1.0, 0.0, 0.0), Point(0.0, 0.0, 0.0, -1.0), Point(0.0, 0.0, 1.0, 0.0)),
+            geometry: (Point(3.0, -1.0, 0.0, 0.0), Point(3.0, 0.0, 0.0, -1.0), Point(3.0, 0.0, 1.0, 0.0)),
             color: (0.25, 0.75, 0.25),
             material: Lambertian,
         ),
         Object(
-            geometry: (Point(0.0, -1.0, 0.0, 0.0), Point(0.0, 0.0, -1.0, 0.0), Point(0.0, 0.0, 0.0, -1.0)),
+            geometry: (Point(-3.0, -1.0, 0.0, 0.0), Point(-3.0, 0.0, -1.0, 0.0), Point(-3.0, 0.0, 0.0, -1.0)),
             color: (0.75, 0.25, 0.25),
             material: Lambertian,
         ),
         Object(
-            geometry: (Point(0.0, 1.0, 0.0, 0.0), Point(0.0, 0.0, 1.0, 0.0), Point(0.0, 0.0, 0.0, 1.0)),
+            geometry: (Point(-3.0, 1.0, 0.0, 0.0), Point(-3.0, 0.0, 1.0, 0.0), Point(-3.0, 0.0, 0.0, 1.0)),
             color: (0.75, 0.75, 0.75),
             material: Lambertian,
         ),
         Object(
-            geometry: (Point(0.0, 1.0, 0.0, 0.0), Point(0.0, 0.0, 0.0, 1.0), Point(0.0, 0.0, -1.0, 0.0)),
+            geometry: (Point(3.0, 1.0, 0.0, 0.0), Point(3.0, 0.0, 0.0, 1.0), Point(3.0, 0.0, -1.0, 0.0)),
             color: (0.25, 0.75, 0.75),
             material: Lambertian,
         ),
         Object(
-            geometry: (Point(0.0, 1.0, 0.0, 0.0), Point(0.0, 0.0, 0.0, -1.0), Point(0.0, 0.0, 1.0, 0.0)),
+            geometry: (Point(-3.0, 1.0, 0.0, 0.0), Point(-3.0, 0.0, 0.0, -1.0), Point(-3.0, 0.0, 1.0, 0.0)),
             color: (0.75, 0.25, 0.75),
             material: Lambertian,
         ),
         Object(
-            geometry: (Point(0.0, 1.0, 0.0, 0.0), Point(0.0, 0.0, -1.0, 0.0), Point(0.0, 0.0, 0.0, -1.0)),
+            geometry: (Point(3.0, 1.0, 0.0, 0.0), Point(3.0, 0.0, -1.0, 0.0), Point(3.0, 0.0, 0.0, -1.0)),
             color: (0.75, 0.75, 0.25),
             material: Lambertian,
         ),
-        // Object(
-        //     geometry: (Point(1.0, 1.0, 0.0, 1.0), Point(1.0, 0.0, 1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
-        //     color: (0.75, 0.75, 0.25),
-        //     material: Lambertian,
-        // ),
-        // Object(
-        //     geometry: (Point(1.0, -1.0, 0.0, 1.0), Point(1.0, 0.0, 1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
-        //     color: (0.75, 0.25, 0.25),
-        //     material: Lambertian,
-        // ),
-        // Object(
-        //     geometry: (Point(1.0, 1.0, 0.0, 1.0), Point(1.0, 0.0, -1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
-        //     color: (0.25, 0.75, 0.25),
-        //     material: Lambertian,
-        // ),
-        // Object(
-        //     geometry: (Point(1.0, -1.0, 0.0, 1.0), Point(1.0, 0.0, -1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
-        //     color: (0.25, 0.25, 0.25),
-        //     material: Lambertian,
-        // ),
+        Object(
+            geometry: (Point(1.0, 1.0, 0.0, 1.0), Point(1.0, 0.0, 1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
+            color: (0.75, 0.75, 0.25),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(1.0, -1.0, 0.0, 1.0), Point(1.0, 0.0, 1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
+            color: (0.75, 0.25, 0.25),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(1.0, 1.0, 0.0, 1.0), Point(1.0, 0.0, -1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
+            color: (0.25, 0.75, 0.25),
+            material: Lambertian,
+        ),
+        Object(
+            geometry: (Point(1.0, -1.0, 0.0, 1.0), Point(1.0, 0.0, -1.0, 1.0), Point(1.0, 0.0, 0.0, 1.0)),
+            color: (0.25, 0.25, 0.25),
+            material: Lambertian,
+        ),
     ],
     balls: [
         // Object(
         //     geometry: Ball( center: Point(0.0, 0.0, 0.0, 1.0), radius: 0.1 ),
-        //     color: (3, 3, 3),
-        //     material: Emissive
-        // ),
-        Object(
-            geometry: Ball( center: Point(0.0, 0.0, 1.0, 0.0), radius: 0.1 ),
-            color: (3, 3, 3),
-            material: Emissive
-        ),
-        // Object(
-        //     geometry: Ball( center: Point(0.0, 1.0, 0.0, 0.0), radius: 0.1 ),
-        //     color: (3, 3, 3),
-        //     material: Emissive
-        // ),
-        // Object(
-        //     geometry: Ball( center: Point(0.0, 0.0, 0.0, 1.0), radius: 0.1 ),
-        //     color: (3, 3, 3),
-        //     material: Emissive
-        // ),
-        // Object(
-        //     geometry: Ball( center: Point(1.0, 0.0, 0.0, 0.0), radius: 0.1 ),
-        //     color: (3, 3, 3),
+        //     color: (2, 4, 4),
         //     material: Emissive
         // ),
         // Object(
         //     geometry: Ball( center: Point(0.0, 0.0, 1.0, 0.0), radius: 0.1 ),
-        //     color: (3, 3, 3),
+        //     color: (4, 2, 4),
         //     material: Emissive
         // ),
         // Object(
         //     geometry: Ball( center: Point(0.0, 1.0, 0.0, 0.0), radius: 0.1 ),
-        //     color: (3, 3, 3),
+        //     color: (4, 4, 2),
         //     material: Emissive
         // ),
+        // Object(
+        //     geometry: Ball( center: Point(0.0, 0.0, 0.0, -1.0), radius: 0.1 ),
+        //     color: (5, 2, 2),
+        //     material: Emissive
+        // ),
+        // Object(
+        //     geometry: Ball( center: Point(0.0, 0.0, -1.0, 0.0), radius: 0.1 ),
+        //     color: (2, 5, 2),
+        //     material: Emissive
+        // ),
+        // Object(
+        //     geometry: Ball( center: Point(0.0, -1.0, 0.0, 0.0), radius: 0.1 ),
+        //     color: (2, 2, 5),
+        //     material: Emissive
+        // ),
+    ],
+    sequences: [
+        Sequence(
+            move_dir: (0, 0, 1.0),
+            view_angles: (0.0, 0.0),
+            angular_speed: (0.2, 0.2),
+            angle: 6.28,
+            speed: 0.5,
+            fps: 30,
+            oversamples: 7,
+            folder: "output/presentation_render"
+        )
     ]
 )
